@@ -1,5 +1,5 @@
 import requests
-from config import API_URL, CONTROLLER_ID
+from src.config import API_URL, CONTROLLER_ID
 
 class APIClient:
     def __init__(self):

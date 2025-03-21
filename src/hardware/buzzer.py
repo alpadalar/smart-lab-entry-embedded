@@ -1,7 +1,7 @@
 import RPi.GPIO as GPIO
 import time
 import threading
-from config import (
+from src.config import (
     INSIDE_BUZZER_PIN, OUTSIDE_BUZZER_PIN,
     BUZZER_DURATIONS
 )

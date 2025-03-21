@@ -2,7 +2,7 @@ import board
 import neopixel
 import time
 import threading
-from config import (
+from src.config import (
     LED_COUNT, INSIDE_LED_PIN, OUTSIDE_LED_PIN,
     COLORS, LED_DURATIONS
 )

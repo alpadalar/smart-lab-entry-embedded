@@ -1,5 +1,5 @@
 import time
-from config import LCD_CHANNEL, LCD_WIDTH, LCD_HEIGHT, LCD_ADDR
+from src.config import LCD_CHANNEL, LCD_WIDTH, LCD_HEIGHT, LCD_ADDR
 
 class LCDDisplay:
     def __init__(self, multiplexer):
