@@ -1,0 +1,19 @@
+multiplexer_address: 0x70
+lcd_address: 0x27
+api_url: "http://localhost:8080/api/access-portals/door-status"
+controller_id: "585285"
+
+nfc_channels:
+  inside: 0
+  outside: 1
+lcd_channel: 2
+
+buzzer_pins:
+  inside: 17
+  outside: 27
+
+led_pins:
+  inside: 18
+  outside: 19
+
+led_pixel_count: 8 
