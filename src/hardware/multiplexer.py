@@ -1,6 +1,6 @@
 import smbus
 import time
-from config import MULTIPLEXER_ADDR, I2C_BUS
+from src.config import MULTIPLEXER_ADDR, I2C_BUS
 
 class I2CMultiplexer:
     def __init__(self):

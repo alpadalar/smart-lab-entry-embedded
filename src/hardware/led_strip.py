@@ -1,11 +1,11 @@
-import board
-import neopixel
 import time
-import threading
 from src.config import (
     LED_COUNT, INSIDE_LED_PIN, OUTSIDE_LED_PIN,
     COLORS, LED_DURATIONS
 )
+import board
+import neopixel
+import threading
 
 class LEDStrip:
     def __init__(self, pin, is_inside=True):

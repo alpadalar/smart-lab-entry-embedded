@@ -1,7 +1,7 @@
 import board
 import busio
-from adafruit_pn532.i2c import PN532_I2C
-from src.config import INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL
+from pn532 import *
+from src.config import INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL, NFC_ADDR, NFC_IRQ, NFC_RESET
 
 class NFCReader:
     def __init__(self, multiplexer, is_inside=True):

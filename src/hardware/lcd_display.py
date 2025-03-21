@@ -1,4 +1,5 @@
 import time
+from lcd1602 import LCD1602
 from src.config import LCD_CHANNEL, LCD_WIDTH, LCD_HEIGHT, LCD_ADDR
 
 class LCDDisplay:

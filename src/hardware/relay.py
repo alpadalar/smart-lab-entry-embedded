@@ -1,5 +1,6 @@
 import usbrelay_py
 import time
+from src.config import RELAY_DURATION
 
 class Relay:
     def __init__(self):
