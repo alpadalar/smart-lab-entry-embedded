@@ -12,70 +12,48 @@ with open("config/config.yaml") as f:
 
 if SIMULATION_MODE:
     # Simülasyon modu
-    from utils.dummy_gpio import PWM, setup, setmode, setwarnings, output, BCM, OUT
-    print("[LED] Simülasyon modu kullanılıyor")
+    from utils.dummy_gpio_zero import PWMLED
+    print("[LED] Simülasyon modu kullanılıyor (gpiozero)")
 else:
     # Gerçek donanım modu
-    import RPi.GPIO as GPIO
-    PWM = GPIO.PWM
-    setup = GPIO.setup
-    setmode = GPIO.setmode
-    setwarnings = GPIO.setwarnings
-    output = GPIO.output
-    BCM = GPIO.BCM
-    OUT = GPIO.OUT
+    from gpiozero import PWMLED
 
-# GPIO ayarlarını yap
-setmode(BCM)
-setwarnings(False)
-
-# LED pinlerini ayarla
-setup(config['led_pins']['inside'], OUT)
-setup(config['led_pins']['outside'], OUT)
-
-# PWM nesnelerini oluştur
-pwm_leds = {
-    "inside": PWM(config['led_pins']['inside'], 100),  # 100 Hz
-    "outside": PWM(config['led_pins']['outside'], 100)  # 100 Hz
+# LED nesnelerini oluştur
+leds = {
+    "inside": PWMLED(config['led_pins']['inside']),
+    "outside": PWMLED(config['led_pins']['outside'])
 }
 
-# PWM başlat
-for led in pwm_leds.values():
-    led.start(0)  # %0 duty cycle (kapalı)
-
-def breathing_effect(led_pwm):
-    """Nefes alıp veren LED efekti"""
-    while True:
-        for i in range(0, 101, 5):  # 0'dan 100'e
-            led_pwm.ChangeDutyCycle(i)
-            time.sleep(0.05)
-        for i in range(100, -1, -5):  # 100'den 0'a
-            led_pwm.ChangeDutyCycle(i)
-            time.sleep(0.05)
+def breathing_effect(led):
+    """Nefes alıp veren LED efekti - artık pulse() ile yapıyoruz"""
+    led.pulse()
 
 def show_pattern(role, pattern, duration=2):
     """LED yanıp sönme desenini göster
     pattern: açık/kapalı durumlar listesi (Ör: [1, 0, 1, 0] - açık, kapalı, açık, kapalı)
     """
-    led_pin = config['led_pins'][role]
+    led = leds[role]
     for state in pattern:
-        output(led_pin, state)
+        if state:
+            led.on()
+        else:
+            led.off()
         time.sleep(0.2)
     time.sleep(duration)
-    output(led_pin, 0)  # Kapat
+    led.off()
 
 def show_color(role, color, duration=2):
     """
-    color: (r, g, b) - Bu basit implementasyonda sadece parlaklık kullanılır
+    color: (r, g, b) - Bu implementasyonda ortalama parlaklık kullanılır
     """
     # RGB'den parlaklık hesapla (ortalama değer)
-    brightness = sum(color) / (3 * 255) * 100
+    brightness = sum(color) / (3 * 255)
     
-    pwm_led = pwm_leds[role]
-    pwm_led.ChangeDutyCycle(brightness)
+    led = leds[role]
+    led.value = brightness
     time.sleep(duration)
-    pwm_led.ChangeDutyCycle(0)  # Kapat
+    led.off()  # Kapat
 
 def start_breathing(role):
     """Nefes alıp veren LED efektini başlat"""
-    threading.Thread(target=breathing_effect, args=(pwm_leds[role],), daemon=True).start() 
+    leds[role].pulse() 

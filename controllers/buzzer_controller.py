@@ -10,29 +10,26 @@ with open("config/config.yaml") as f:
 
 if SIMULATION_MODE:
     # Simülasyon modu
-    from utils.dummy_gpio import setmode, setwarnings, setup, output, BCM, OUT, HIGH, LOW
-    print("[BUZZER] Simülasyon modu kullanılıyor")
+    from utils.dummy_gpio_zero import Buzzer
+    print("[BUZZER] Simülasyon modu kullanılıyor (gpiozero)")
 else:
     # Gerçek donanım modu
-    import RPi.GPIO as GPIO
-    setmode = GPIO.setmode
-    setwarnings = GPIO.setwarnings
-    setup = GPIO.setup
-    output = GPIO.output
-    BCM = GPIO.BCM
-    OUT = GPIO.OUT
-    HIGH = GPIO.HIGH
-    LOW = GPIO.LOW
+    from gpiozero import Buzzer
 
-setmode(BCM)
-setwarnings(False)
-setup(config['buzzer_pins']['inside'], OUT)
-setup(config['buzzer_pins']['outside'], OUT)
+# Buzzer nesnelerini oluştur
+buzzers = {
+    "inside": Buzzer(config['buzzer_pins']['inside']),
+    "outside": Buzzer(config['buzzer_pins']['outside'])
+}
 
 def beep(role, pattern):
-    pin = config['buzzer_pins'][role]
+    """
+    Buzzer ses çıkarma
+    pattern: bip uzunlukları listesi (örn: [0.1, 0.1] - kısa-kısa bip)
+    """
+    buzzer = buzzers[role]
     for dur in pattern:
-        output(pin, HIGH)
+        buzzer.on()
         time.sleep(dur)
-        output(pin, LOW)
+        buzzer.off()
         time.sleep(0.1) 
