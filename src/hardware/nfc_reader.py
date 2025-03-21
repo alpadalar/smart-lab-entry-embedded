@@ -1,7 +1,9 @@
 import board
 import busio
+import time
+import smbus
 from adafruit_pn532.i2c import PN532_I2C
-from src.config import INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL
+from src.config import INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL, NFC_ADDR
 
 class NFCReader:
     def __init__(self, multiplexer, is_inside=True):
@@ -11,15 +13,38 @@ class NFCReader:
         
         # I2C bağlantısı
         self.i2c = busio.I2C(board.SCL, board.SDA)
+        self.smbus = smbus.SMBus(1)
         
         # NFC okuyucuyu başlat
-        self.multiplexer.select_channel(self.channel)
-        self.pn532 = PN532_I2C(self.i2c)
+        try:
+            # Önce multiplexer kanalını seç
+            self.multiplexer.select_channel(self.channel)
+            time.sleep(0.1)  # Kanal değişikliği için bekle
+            
+            # PN532'yi başlat
+            self.pn532 = PN532_I2C(self.i2c, address=NFC_ADDR, debug=True)
+            
+            # PN532'yi yapılandır
+            self.pn532.SAM_configuration()
+            
+            # Firmware versiyonunu kontrol et
+            version = self.pn532.get_firmware_version()
+            print(f"{'İç' if is_inside else 'Dış'} NFC okuyucu başlatıldı (Adres: 0x{NFC_ADDR:02X})")
+            print(f"Firmware versiyonu: {version}")
+            
+        except Exception as e:
+            print(f"NFC okuyucu başlatma hatası: {str(e)}")
+            self.cleanup()  # Hata durumunda kaynakları temizle
+            raise
         
     def read_card(self):
         """Kart okuma işlemi yapar"""
-        self.multiplexer.select_channel(self.channel)
         try:
+            # Kanalı seç
+            self.multiplexer.select_channel(self.channel)
+            time.sleep(0.1)  # Kanal değişikliği için bekle
+            
+            # Kartı oku
             uid = self.pn532.read_passive_target(timeout=0.1)
             if uid:
                 return ''.join([hex(i)[2:].zfill(2) for i in uid])
@@ -31,7 +56,23 @@ class NFCReader:
     def cleanup(self):
         """NFC okuyucuyu temizler"""
         try:
+            # Kanalı seç
             self.multiplexer.select_channel(self.channel)
-            self.pn532.deinit()
+            time.sleep(0.1)  # Kanal değişikliği için bekle
+            
+            # PN532'yi temizle
+            if hasattr(self, 'pn532'):
+                self.pn532.deinit()
+            
+            # I2C bağlantılarını temizle
+            if hasattr(self, 'i2c'):
+                self.i2c.deinit()
+            if hasattr(self, 'smbus'):
+                self.smbus.close()
+                
         except Exception as e:
-            print(f"NFC okuyucu temizleme hatası: {str(e)}") 
+            print(f"NFC okuyucu temizleme hatası: {str(e)}")
+            
+    def __del__(self):
+        """Nesne silindiğinde kaynakları temizle"""
+        self.cleanup() 
