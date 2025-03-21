@@ -1,6 +1,5 @@
 adafruit-circuitpython-pn532>=2.0.9
 adafruit-blinka>=8.32.0
-adafruit-bus-device>=5.2.1
 adafruit-pureio>=1.1.11
 RPLCD>=1.3.0
 usbrelay_py>=0.1.0
