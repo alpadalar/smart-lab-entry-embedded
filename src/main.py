@@ -6,7 +6,6 @@ from src.hardware.nfc_reader import NFCReader
 from src.hardware.lcd_display import LCDDisplay
 from src.hardware.led_strip import LEDStrip
 from src.hardware.buzzer import Buzzer
-from src.utils.logger import setup_logger
 from src.utils.relay_control import trigger_relays
 from src.config import (
     INSIDE_LED_PIN, OUTSIDE_LED_PIN,
