@@ -3,12 +3,15 @@
 # Simülasyon modunu false olarak ayarla
 export SIMULATION_MODE=false
 
+# Sanal ortamın mutlak yolunu belirt
+VENV_PATH="$PWD/venv"
+
 # Sanal ortamı aktif et (varsa)
-if [ -d "venv" ]; then
+if [ -d "$VENV_PATH" ]; then
     echo "Sanal ortam aktif ediliyor..."
-    source venv/bin/activate
+    . "$VENV_PATH/bin/activate"
 fi
 
-# Sudo ile çalıştır
+# Sudo ile çalıştır ve Python yolunu belirt
 echo "Program root yetkileriyle başlatılıyor..."
-sudo SIMULATION_MODE=false python3 main.py 
+sudo PYTHONPATH="$PWD" SIMULATION_MODE=false python3 main.py 
