@@ -1,179 +1,135 @@
 import time
-import signal
-import sys
+import RPi.GPIO as GPIO
+import usbrelay_py
 from src.hardware.multiplexer import I2CMultiplexer
 from src.hardware.nfc_reader import NFCReader
 from src.hardware.lcd_display import LCDDisplay
 from src.hardware.led_strip import LEDStrip
 from src.hardware.buzzer import Buzzer
-from src.hardware.relay import Relay
-from src.utils.api_client import APIClient
-from src.utils.logger import Logger
+from src.utils.logger import setup_logger
+from src.utils.relay_control import trigger_relays
 from src.config import (
-    INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL,
     INSIDE_LED_PIN, OUTSIDE_LED_PIN,
-    INSIDE_BUZZER_PIN, OUTSIDE_BUZZER_PIN
+    INSIDE_BUZZER_PIN, OUTSIDE_BUZZER_PIN,
+    INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL
 )
-import RPi.GPIO as GPIO
 
 class HardwareError(Exception):
-    """Donanım hataları için özel istisna sınıfı"""
+    """Donanım başlatma hataları için özel istisna sınıfı"""
     pass
 
 class AccessControlSystem:
     def __init__(self):
-        try:
-            print("Sistem başlatılıyor...")
-            
-            # GPIO'yu ayarla
-            GPIO.setmode(GPIO.BCM)
-            
-            # Donanım bileşenlerini başlat
-            print("I2C Multiplexer başlatılıyor...")
-            try:
-                self.multiplexer = I2CMultiplexer()
-            except Exception as e:
-                raise HardwareError(f"I2C Multiplexer başlatılamadı: {str(e)}\n"
-                                  "Lütfen I2C bağlantılarını ve adresini kontrol edin.")
-            
-            print("NFC okuyucular başlatılıyor...")
-            try:
-                self.inside_nfc = NFCReader(self.multiplexer, is_inside=True)
-                self.outside_nfc = NFCReader(self.multiplexer, is_inside=False)
-            except Exception as e:
-                raise HardwareError(f"NFC okuyucular başlatılamadı: {str(e)}\n"
-                                  "Lütfen I2C bağlantılarını ve multiplexer kanallarını kontrol edin.")
-            
-            print("LCD ekran başlatılıyor...")
-            try:
-                self.lcd = LCDDisplay(self.multiplexer)
-            except Exception as e:
-                raise HardwareError(f"LCD ekran başlatılamadı: {str(e)}\n"
-                                  "Lütfen I2C adresini ve kontrast ayarını kontrol edin.")
-            
-            print("LED şeritler başlatılıyor...")
-            try:
-                self.inside_led = LEDStrip(INSIDE_LED_PIN, is_inside=True)
-                self.outside_led = LEDStrip(OUTSIDE_LED_PIN, is_inside=False)
-            except Exception as e:
-                raise HardwareError(f"LED şeritler başlatılamadı: {str(e)}\n"
-                                  "Lütfen güç kaynağını ve DIN pinlerini kontrol edin.")
-            
-            print("Buzzer'lar başlatılıyor...")
-            try:
-                self.inside_buzzer = Buzzer(INSIDE_BUZZER_PIN, is_inside=True)
-                self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_PIN, is_inside=False)
-            except Exception as e:
-                raise HardwareError(f"Buzzer'lar başlatılamadı: {str(e)}\n"
-                                  "Lütfen VCC pinlerini kontrol edin.")
-            
-            print("Röle başlatılıyor...")
-            try:
-                self.relay = Relay()
-            except Exception as e:
-                raise HardwareError(f"USB röle başlatılamadı: {str(e)}\n"
-                                  "Lütfen USB bağlantısını kontrol edin.")
-            
-            # Yardımcı bileşenleri başlat
-            print("API istemcisi başlatılıyor...")
-            self.api = APIClient()
-            
-            print("Logger başlatılıyor...")
-            self.logger = Logger()
-            
-            # LED efektlerini başlat
-            print("LED efektleri başlatılıyor...")
-            self.inside_led.start_breathing()
-            self.outside_led.start_breathing()
-            
-            # LCD'yi başlat
-            print("Karşılama ekranı gösteriliyor...")
-            self.lcd.show_welcome()
-            
-            print("Sistem başarıyla başlatıldı!")
-            
-        except HardwareError as e:
-            print(f"\nDonanım Hatası: {str(e)}")
-            self.cleanup()
-            raise
-        except Exception as e:
-            print(f"\nBeklenmeyen Hata: {str(e)}")
-            self.cleanup()
-            raise
-
-    def handle_card_read(self, card_uid, is_inside):
-        """Kart okuma işlemini yönetir"""
-        try:
-            # API'den erişim kontrolü
-            door_opened = self.api.check_access(card_uid, is_inside)
-            
-            # Röle kontrolü
-            if door_opened:
-                self.relay.trigger()
-                
-            # LED ve buzzer kontrolü
-            led = self.inside_led if is_inside else self.outside_led
-            buzzer = self.inside_buzzer if is_inside else self.outside_buzzer
-            
-            if door_opened:
-                led.show_success()
-                buzzer.success_beep()
-            else:
-                led.show_fail()
-                buzzer.fail_beep()
-                
-            # LCD güncelleme
-            self.lcd.show_access_info(is_inside, door_opened)
-            
-            # Loglama
-            self.logger.log_access(card_uid, is_inside, door_opened)
-            
-        except Exception as e:
-            error_msg = f"Hata oluştu: {str(e)}"
-            print(error_msg)
-            self.logger.log_error(error_msg)
-            
-            # Hata durumunda LED ve buzzer
-            led = self.inside_led if is_inside else self.outside_led
-            buzzer = self.inside_buzzer if is_inside else self.outside_buzzer
-            led.show_error()
-            buzzer.error_beep()
-            
-            self.lcd.show_error("Bir hata oluştu!")
-            
-    def run(self):
-        """Ana döngü"""
-        print("Sistem başlatıldı. Kart bekleniyor...")
+        """Sistem başlatma"""
+        print("Sistem başlatılıyor...")
         
-        while True:
-            try:
-                # İç NFC kontrolü
+        # GPIO ayarları
+        GPIO.setmode(GPIO.BCM)
+        
+        try:
+            # I2C Multiplexer başlat
+            print("I2C Multiplexer başlatılıyor...")
+            self.multiplexer = I2CMultiplexer()
+            print("I2C Multiplexer (0x70) başarıyla başlatıldı.")
+            
+            # NFC okuyucuları başlat
+            print("NFC okuyucular başlatılıyor...")
+            self.inside_nfc = NFCReader(self.multiplexer, is_inside=True)
+            self.outside_nfc = NFCReader(self.multiplexer, is_inside=False)
+            
+            # LED şeritleri başlat
+            print("LED şeritleri başlatılıyor...")
+            self.inside_led = LEDStrip(INSIDE_LED_PIN, is_inside=True)
+            self.outside_led = LEDStrip(OUTSIDE_LED_PIN, is_inside=False)
+            
+            # Buzzer'ları başlat
+            print("Buzzer'lar başlatılıyor...")
+            self.inside_buzzer = Buzzer(INSIDE_BUZZER_PIN, is_inside=True)
+            self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_PIN, is_inside=False)
+            
+            # LCD ekranı başlat
+            print("LCD ekran başlatılıyor...")
+            self.lcd = LCDDisplay(self.multiplexer)
+            
+            print("Tüm donanımlar başarıyla başlatıldı.")
+            
+        except Exception as e:
+            print(f"Donanım başlatma hatası: {str(e)}")
+            self.cleanup()
+            raise HardwareError(f"Donanım başlatılamadı: {str(e)}")
+    
+    def run(self):
+        """Ana program döngüsü"""
+        print("Sistem çalışıyor...")
+        print("Kart bekleniyor...")
+        
+        try:
+            while True:
+                # İç NFC okuyucuyu kontrol et
+                self.multiplexer.select_channel(INSIDE_NFC_CHANNEL)
                 inside_uid = self.inside_nfc.read_card()
                 if inside_uid:
-                    self.handle_card_read(inside_uid, True)
-                    
-                # Dış NFC kontrolü
+                    print(f"İç NFC: Kart okundu! UID: {inside_uid}")
+                    self.handle_card_read(True, inside_uid)
+                    continue
+                
+                # Dış NFC okuyucuyu kontrol et
+                self.multiplexer.select_channel(OUTSIDE_NFC_CHANNEL)
                 outside_uid = self.outside_nfc.read_card()
                 if outside_uid:
-                    self.handle_card_read(outside_uid, False)
-                    
-                time.sleep(0.1)  # CPU kullanımını azalt
+                    print(f"Dış NFC: Kart okundu! UID: {outside_uid}")
+                    self.handle_card_read(False, outside_uid)
+                    continue
                 
-            except KeyboardInterrupt:
-                print("\nProgram sonlandırılıyor...")
-                break
-            except Exception as e:
-                error_msg = f"Beklenmeyen hata: {str(e)}"
-                print(error_msg)
-                self.logger.log_error(error_msg)
-                time.sleep(1)  # Hata durumunda kısa bekleme
+                time.sleep(0.1)  # CPU kullanımını azaltmak için kısa bekleme
                 
-    def cleanup(self):
-        """Kaynakları temizler"""
+        except KeyboardInterrupt:
+            print("\nProgram kullanıcı tarafından durduruldu.")
+        except Exception as e:
+            print(f"Beklenmeyen hata: {str(e)}")
+        finally:
+            self.cleanup()
+    
+    def handle_card_read(self, is_inside, uid):
+        """Kart okuma işlemlerini yönet"""
         try:
-            print("Sistem kapatılıyor...")
+            # LED ve buzzer efektleri
+            if is_inside:
+                self.inside_led.success_effect()
+                self.inside_buzzer.success_beep()
+            else:
+                self.outside_led.success_effect()
+                self.outside_buzzer.success_beep()
             
-            # LED'leri temizle
+            # Röleleri tetikle
+            trigger_relays()
+            
+            # LCD'ye bilgi göster
+            self.lcd.show_card_info(uid, is_inside)
+            
+            # Kısa bir bekleme
+            time.sleep(1)
+            
+        except Exception as e:
+            print(f"Kart işleme hatası: {str(e)}")
+            if is_inside:
+                self.inside_led.error_effect()
+                self.inside_buzzer.error_beep()
+            else:
+                self.outside_led.error_effect()
+                self.outside_buzzer.error_beep()
+    
+    def cleanup(self):
+        """Kaynakları temizle"""
+        print("Sistem kapatılıyor...")
+        try:
+            # NFC okuyucuları temizle
+            if hasattr(self, 'inside_nfc'):
+                self.inside_nfc.cleanup()
+            if hasattr(self, 'outside_nfc'):
+                self.outside_nfc.cleanup()
+            
+            # LED şeritleri temizle
             if hasattr(self, 'inside_led'):
                 self.inside_led.cleanup()
             if hasattr(self, 'outside_led'):
@@ -185,24 +141,13 @@ class AccessControlSystem:
             if hasattr(self, 'outside_buzzer'):
                 self.outside_buzzer.cleanup()
             
-            # LCD'yi temizle
+            # LCD ekranı temizle
             if hasattr(self, 'lcd'):
-                self.lcd.clear()
-                self.lcd.set_backlight(False)
-            
-            # NFC okuyucuları temizle
-            if hasattr(self, 'inside_nfc'):
-                self.inside_nfc.cleanup()
-            if hasattr(self, 'outside_nfc'):
-                self.outside_nfc.cleanup()
+                self.lcd.cleanup()
             
             # Multiplexer'ı temizle
             if hasattr(self, 'multiplexer'):
                 self.multiplexer.cleanup()
-            
-            # Röle'i temizle
-            if hasattr(self, 'relay'):
-                self.relay.cleanup()
             
             # GPIO'yu temizle
             GPIO.cleanup()
@@ -210,11 +155,13 @@ class AccessControlSystem:
             print("Tüm kaynaklar temizlendi.")
             
         except Exception as e:
-            print(f"Temizleme sırasında hata oluştu: {str(e)}")
+            print(f"Temizleme hatası: {str(e)}")
 
 if __name__ == "__main__":
-    system = AccessControlSystem()
     try:
+        system = AccessControlSystem()
         system.run()
-    finally:
-        system.cleanup() 
+    except Exception as e:
+        print(f"Program hatası: {str(e)}")
+        if 'system' in locals():
+            system.cleanup() 

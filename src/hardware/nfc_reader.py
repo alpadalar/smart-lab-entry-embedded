@@ -21,27 +21,17 @@ class NFCReader:
             
             # Önce multiplexer kanalını seç
             self.multiplexer.select_channel(self.channel)
-            time.sleep(0.1)  # Kanal değişikliği için bekle
-            
-            # I2C cihazlarını kontrol et
-            devices = self.i2c.scan()
-            print(f"Kanal {self.channel} üzerindeki I2C cihazları: {[hex(device) for device in devices]}")
+            time.sleep(0.01)  # Kanal değişikliği için kısa bekleme
             
             # PN532'yi başlat
-            print(f"PN532 başlatılıyor (Adres: 0x{NFC_ADDR:02X})...")
-            
-            # PN532'yi başlat
-            self.pn532 = PN532_I2C(self.i2c, debug=True)
+            print(f"PN532 başlatılıyor (Kanal: {self.channel})...")
+            self.pn532 = PN532_I2C(self.i2c)
             
             # PN532'yi yapılandır
             print("PN532 yapılandırılıyor...")
             self.pn532.SAM_configuration()
             
-            # Firmware versiyonunu kontrol et
-            print("Firmware versiyonu kontrol ediliyor...")
-            version = self.pn532.get_firmware_version()
             print(f"{'İç' if is_inside else 'Dış'} NFC okuyucu başarıyla başlatıldı")
-            print(f"Firmware versiyonu: {version}")
             
         except Exception as e:
             print(f"NFC okuyucu başlatma hatası: {str(e)}")
@@ -54,7 +44,7 @@ class NFCReader:
         try:
             # Kanalı seç
             self.multiplexer.select_channel(self.channel)
-            time.sleep(0.1)  # Kanal değişikliği için bekle
+            time.sleep(0.01)  # Kanal değişikliği için kısa bekleme
             
             # Kartı oku
             uid = self.pn532.read_passive_target(timeout=0.1)
@@ -71,7 +61,7 @@ class NFCReader:
         try:
             # Kanalı seç
             self.multiplexer.select_channel(self.channel)
-            time.sleep(0.1)  # Kanal değişikliği için bekle
+            time.sleep(0.01)  # Kanal değişikliği için kısa bekleme
             
             # PN532'yi temizle
             if hasattr(self, 'pn532'):
