@@ -146,7 +146,7 @@ bash run_hardware.sh
 veya
 
 ```bash
-sudo GPIOZERO_PIN_FACTORY=rpigpio SIMULATION_MODE=false python main.py
+sudo GPIOZERO_PIN_FACTORY=lgpio SIMULATION_MODE=false python main.py
 ```
 
 ## Özellikler
@@ -185,4 +185,140 @@ lsusb
 
 ## Lisans
 
-Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın. 
+Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın.
+
+## Raspberry Pi 5 Uyumluluğu ve Sorun Giderme
+
+Raspberry Pi 5, farklı GPIO kontrolör mimarisi nedeniyle önceki Raspberry Pi modellerinden bazı farklılıklar gösterir. Aşağıdaki bilgiler, Raspberry Pi 5 ile çalışırken karşılaşabileceğiniz sorunları çömenize yardımcı olacaktır.
+
+### Pin Factory Seçimi
+
+Raspberry Pi 5 ile çalışırken, uygun pin factory seçimi önemlidir:
+
+1. **lgpio (Önerilen)**: Raspberry Pi 5 için özel olarak tasarlanmış, yerel GPIO kütüphanesi.
+   ```bash
+   export GPIOZERO_PIN_FACTORY=lgpio
+   ```
+
+2. **pigpio**: Tüm Raspberry Pi modellerinde çalışan, düşük gecikme süreli bir GPIO kütüphanesi.
+   ```bash
+   export GPIOZERO_PIN_FACTORY=pigpio
+   sudo pigpiod  # pigpio daemon'u başlat
+   ```
+
+3. **rpigpio**: Eski Raspberry Pi modelleri için, Raspberry Pi 5 üzerinde tam uyumlu değil.
+   ```bash
+   export GPIOZERO_PIN_FACTORY=rpigpio  # Raspberry Pi 5'te bazı sorunlar yaratabilir
+   ```
+
+4. **native**: GPIOZero'nun otomatik olarak en uygun pin factory'i seçmesini sağlar.
+   ```bash
+   export GPIOZERO_PIN_FACTORY=native
+   ```
+
+### I2C Sorunları ve Çözümleri
+
+Raspberry Pi 5 üzerinde I2C iletişim sorunları yaşıyorsanız:
+
+1. **I2C Baudrate Hızını Düşürme**: Clock stretching sorunlarını çözmek için I2C hızını düşürün.
+   ```bash
+   # /boot/config.txt dosyasına ekle veya düzenle
+   dtparam=i2c_arm=on,i2c_arm_baudrate=50000
+   ```
+
+2. **NFC Okuyucu Bağlantı Sorunları**: PN532 okuyucular için bağlantıyı doğrulayın.
+   ```bash
+   i2cdetect -y 1  # I2C cihazlarını listele
+   sudo i2cdump -y 1 0x24  # PN532 için
+   ```
+
+3. **Alternatif I2C Yazılım Veri Yolu**: Donanım I2C ile sorun yaşıyorsanız, yazılım tabanlı I2C kullanın.
+   ```bash
+   # /boot/config.txt dosyasına ekle
+   dtoverlay=i2c-gpio,bus=3,i2c_gpio_sda=17,i2c_gpio_scl=27
+   ```
+
+### GPIO Erişim İzinleri
+
+Raspberry Pi 5 üzerinde GPIO erişim sorunları:
+
+1. **Kullanıcı İzinleri**: Kullanıcınızın gerekli gruplara üye olduğundan emin olun.
+   ```bash
+   sudo usermod -a -G gpio,i2c,spi,dialout $USER
+   # Değişikliklerin geçerli olması için oturumu kapatıp açın
+   ```
+
+2. **GPIO Erişim Haklarını Ayarlama**: Doğrudan GPIO dosya sistemine erişim için.
+   ```bash
+   sudo chmod -R a+rw /sys/class/gpio/
+   sudo chmod a+rw /dev/gpiomem
+   ```
+
+3. **Root ile Çalıştırma**: Son çare olarak, programı root olarak çalıştırın.
+   ```bash
+   sudo ./run_hardware.sh
+   ```
+
+### "Cannot determine SOC peripheral base address" Hatası
+
+Bu hata, genellikle Raspberry Pi 5 üzerinde RPi.GPIO kütüphanesi kullanıldığında görülür:
+
+1. **lgpio Kullanma**: rpigpio yerine lgpio pin factory'i kullanın.
+   ```bash
+   export GPIOZERO_PIN_FACTORY=lgpio
+   ```
+
+2. **Sistemin Güncellenmesi**: İşletim sistemini güncelleyin.
+   ```bash
+   sudo apt update && sudo apt upgrade -y
+   ```
+
+3. **Kernel Başlangıç Parametreleri**: `/boot/cmdline.txt` dosyasına `iomem=relaxed` ekleyin.
+   ```
+   console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 iomem=relaxed ...
+   ```
+
+### NFC Okuyucu Optimizasyonu
+
+PN532 NFC okuyucularla daha iyi performans için:
+
+1. **Güvenilir I2C İletişimi**: Düşük baudrate ile I2C sorunlarını azaltın.
+   ```bash
+   # /boot/config.txt dosyasına ekle veya düzenle
+   dtparam=i2c_arm=on,i2c_arm_baudrate=50000
+   ```
+
+2. **RF Seviyesi Ayarı**: Okuma mesafesini artırmak için kod içerisindeki RF seviyesi ayarını aktifleştirin.
+
+3. **NFC Testi**: Standart NFC araçları ile okuyucuyu test edin.
+   ```bash
+   sudo apt install -y libnfc-bin libnfc-dev
+   sudo nfc-list
+   sudo nfc-poll
+   ```
+
+### Otomatik Kurulum
+
+Raspberry Pi 5 ile çalışmak üzere en uygun yapılandırma için otomatik kurulum betiğini kullanın:
+
+```bash
+chmod +x setup_pi5.sh
+./setup_pi5.sh
+sudo reboot
+```
+
+Bu betik gerekli tüm ayarları yaparak Raspberry Pi 5'in GPIOZero, I2C ve NFC cihazları ile en iyi şekilde çalışmasını sağlar.
+
+## Debug Loglama
+
+Debug loglarını etkinleştirmek için:
+
+```bash
+# config/config.yaml dosyasında
+logging:
+  level: "DEBUG"  # INFO, WARNING, ERROR, DEBUG, CRITICAL
+  file: "logs/lab_entry.log"
+  console: true
+```
+
+Bu ayar ile bütün cihazların başlangıç ve çalışma zamanı loglarına erişebilirsiniz. 
