@@ -1,66 +1,44 @@
 import time
+from rpi_ws281x import *
 from src.config import (
     LED_COUNT, INSIDE_LED_PIN, OUTSIDE_LED_PIN,
     COLORS, LED_DURATIONS
 )
-import board
-import neopixel
-import threading
 
 class LEDStrip:
     def __init__(self, pin, is_inside=True):
-        self.pixels = neopixel.NeoPixel(pin, LED_COUNT)
         self.is_inside = is_inside
-        self.breathing_thread = None
-        self.stop_breathing = False
+        self.pin = pin
         
-    def start_breathing(self):
-        """Beyaz nefes alma efektini başlatır"""
-        if self.breathing_thread and self.breathing_thread.is_alive():
+        # LED şerit başlatma
+        self.strip = Adafruit_NeoPixel(
+            LED_COUNT, self.pin, 800000, 10, False, 255, 0
+        )
+        self.strip.begin()
+        self.strip.show()
+        
+    def set_color(self, color_name):
+        """LED şeridi belirtilen renge ayarlar"""
+        if color_name not in COLORS:
             return
             
-        self.stop_breathing = False
-        self.breathing_thread = threading.Thread(target=self._breathing_effect)
-        self.breathing_thread.daemon = True
-        self.breathing_thread.start()
+        color = COLORS[color_name]
+        for i in range(LED_COUNT):
+            self.strip.setPixelColor(i, Color(color[0], color[1], color[2]))
+        self.strip.show()
         
-    def stop_breathing_effect(self):
-        """Nefes alma efektini durdurur"""
-        self.stop_breathing = True
-        if self.breathing_thread:
-            self.breathing_thread.join()
+    def flash(self, color_name, duration=None):
+        """LED şeridi belirtilen renkte yanıp söndürür"""
+        if color_name not in COLORS:
+            return
             
-    def _breathing_effect(self):
-        """Beyaz nefes alma efekti"""
-        while not self.stop_breathing:
-            for i in range(0, 255, 5):
-                if self.stop_breathing:
-                    break
-                self.pixels.fill((i, i, i))
-                time.sleep(0.05)
-            for i in range(255, 0, -5):
-                if self.stop_breathing:
-                    break
-                self.pixels.fill((i, i, i))
-                time.sleep(0.05)
-                
-    def show_success(self):
-        """Başarılı geçiş efekti"""
-        self.stop_breathing_effect()
-        self.pixels.fill(COLORS["GREEN"])
-        time.sleep(LED_DURATIONS["SUCCESS"])
-        self.start_breathing()
+        if duration is None:
+            duration = LED_DURATIONS.get(color_name, 0.5)
+            
+        self.set_color(color_name)
+        time.sleep(duration)
+        self.set_color("OFF")
         
-    def show_fail(self):
-        """Başarısız geçiş efekti"""
-        self.stop_breathing_effect()
-        self.pixels.fill(COLORS["BLUE"])
-        time.sleep(LED_DURATIONS["FAIL"])
-        self.start_breathing()
-        
-    def show_error(self):
-        """Hata efekti"""
-        self.stop_breathing_effect()
-        self.pixels.fill(COLORS["RED"])
-        time.sleep(LED_DURATIONS["ERROR"])
-        self.start_breathing() 
+    def cleanup(self):
+        """LED şeridi temizler"""
+        self.set_color("OFF") 
