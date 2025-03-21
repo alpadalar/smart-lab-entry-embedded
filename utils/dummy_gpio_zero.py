@@ -100,4 +100,25 @@ class Buzzer(LED):
         # LED'in blink metodunu kullan
         super().blink(on_time, off_time, n, background)
         
-Device = LED  # Temel Device sınıfı olarak LED'i kullan 
+class Device(LED):  # Temel Device sınıfı olarak LED'i kullan
+    pass
+
+class DigitalOutputDevice(LED):
+    """Genel dijital çıkış cihazı simülasyonu"""
+    def __init__(self, pin, active_high=True, initial_value=False):
+        super().__init__(pin)
+        self.active_high = active_high
+        self.value = 0
+        if initial_value:
+            self.on()
+        else:
+            self.off()
+        print(f"[DummyGPIOZero] DigitalOutputDevice pin {pin} başlatıldı, active_high={active_high}")
+    
+    def on(self):
+        self.value = 1 if self.active_high else 0
+        print(f"[DummyGPIOZero] DigitalOutputDevice pin {self.pin} açık")
+    
+    def off(self):
+        self.value = 0 if self.active_high else 1
+        print(f"[DummyGPIOZero] DigitalOutputDevice pin {self.pin} kapalı") 

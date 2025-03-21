@@ -1,6 +1,7 @@
 adafruit-circuitpython-pn532
 usbrelay-py
 gpiozero
+lgpio
 smbus2
 requests
 RPLCD
