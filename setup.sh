@@ -14,6 +14,11 @@ check_error() {
     fi
 }
 
+# Proje dizinini bul
+PROJECT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$PROJECT_DIR"
+check_error "Proje dizinine geçilemedi"
+
 echo -e "${YELLOW}Kurulum başlatılıyor...${NC}"
 
 # Python kontrolü
@@ -39,8 +44,7 @@ check_error "Build araçları kurulumu başarısız"
 
 # usbrelay kurulumu
 echo -e "${YELLOW}usbrelay kurulumu yapılıyor...${NC}"
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-USBRELAY_DIR="$SCRIPT_DIR/usbrelay"
+USBRELAY_DIR="$PROJECT_DIR/usbrelay"
 
 if [ ! -d "$USBRELAY_DIR" ]; then
     echo -e "${RED}usbrelay dizini bulunamadı! ($USBRELAY_DIR)${NC}"
@@ -62,6 +66,10 @@ check_error "usbrelay_py dizinine geçilemedi"
 
 $PYTHON_CMD setup.py bdist_wheel
 check_error "usbrelay_py wheel oluşturma hatası"
+
+# Proje dizinine geri dön
+cd "$PROJECT_DIR"
+check_error "Proje dizinine dönülemedi"
 
 # Sanal ortam oluştur
 echo -e "${YELLOW}Sanal ortam oluşturuluyor...${NC}"
