@@ -1,0 +1,6 @@
+adafruit-circuitpython-pn532==2.0.9
+adafruit-circuitpython-rgb-display==3.13.0
+adafruit-circuitpython-neopixel==6.3.9
+usbrelay-py==1.0.0
+requests==2.31.0
+python-dateutil==2.8.2 
