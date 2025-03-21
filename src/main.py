@@ -11,9 +11,8 @@ from src.utils.api_client import APIClient
 from src.utils.logger import Logger
 from src.config import (
     INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL,
-    INSIDE_LED_CHANNEL, OUTSIDE_LED_CHANNEL,
-    INSIDE_BUZZER_CHANNEL, OUTSIDE_BUZZER_CHANNEL,
-    RELAY_CHANNEL
+    INSIDE_LED_PIN, OUTSIDE_LED_PIN,
+    INSIDE_BUZZER_PIN, OUTSIDE_BUZZER_PIN
 )
 import RPi.GPIO as GPIO
 
@@ -21,6 +20,9 @@ class AccessControlSystem:
     def __init__(self):
         try:
             print("Sistem başlatılıyor...")
+            
+            # GPIO'yu ayarla
+            GPIO.setmode(GPIO.BCM)
             
             # Donanım bileşenlerini başlat
             print("I2C Multiplexer başlatılıyor...")
@@ -34,12 +36,12 @@ class AccessControlSystem:
             self.lcd = LCDDisplay(self.multiplexer)
             
             print("LED şeritler başlatılıyor...")
-            self.inside_led = LEDStrip(INSIDE_LED_CHANNEL, is_inside=True)
-            self.outside_led = LEDStrip(OUTSIDE_LED_CHANNEL, is_inside=False)
+            self.inside_led = LEDStrip(INSIDE_LED_PIN, is_inside=True)
+            self.outside_led = LEDStrip(OUTSIDE_LED_PIN, is_inside=False)
             
             print("Buzzer'lar başlatılıyor...")
-            self.inside_buzzer = Buzzer(INSIDE_BUZZER_CHANNEL, is_inside=True)
-            self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_CHANNEL, is_inside=False)
+            self.inside_buzzer = Buzzer(INSIDE_BUZZER_PIN, is_inside=True)
+            self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_PIN, is_inside=False)
             
             print("Röle başlatılıyor...")
             self.relay = Relay()

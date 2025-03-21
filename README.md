@@ -51,23 +51,19 @@ Raspberry Pi 5 tabanlı akıllı laboratuvar giriş sistemi. NFC kart okuyucular
 - VCC -> 5V
 - GND -> GND
 - DIN -> GPIO18 (Pin 12)
-- I2C Kanal: 3
 
 ### Dış LED Şerit Bağlantıları
 - VCC -> 5V
 - GND -> GND
 - DIN -> GPIO12 (Pin 32)
-- I2C Kanal: 4
 
 ### İç Buzzer Bağlantıları
 - VCC -> GPIO23 (Pin 16)
 - GND -> GND
-- I2C Kanal: 5
 
 ### Dış Buzzer Bağlantıları
 - VCC -> GPIO24 (Pin 18)
 - GND -> GND
-- I2C Kanal: 6
 
 ### USB Röle Kartı
 - USB port üzerinden bağlanır
