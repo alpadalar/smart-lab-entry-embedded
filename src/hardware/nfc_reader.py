@@ -29,14 +29,14 @@ class NFCReader:
             time.sleep(0.1)  # Kanal değişikliği için bekle
             
             # PN532'yi başlat
-            self.pn532 = PN532_I2C(self.i2c, address=NFC_ADDR, debug=True)
+            self.pn532 = PN532_I2C(self.i2c, debug=True)
             
             # PN532'yi yapılandır
             self.pn532.SAM_configuration()
             
             # Firmware versiyonunu kontrol et
             version = self.pn532.get_firmware_version()
-            print(f"{'İç' if is_inside else 'Dış'} NFC okuyucu başarıyla başlatıldı (Adres: 0x{NFC_ADDR:02X})")
+            print(f"{'İç' if is_inside else 'Dış'} NFC okuyucu başarıyla başlatıldı")
             print(f"Firmware versiyonu: {version}")
             
         except Exception as e:
@@ -60,9 +60,10 @@ class NFCReader:
     def cleanup(self):
         """NFC okuyucuyu temizler"""
         try:
-            self.multiplexer.select_channel(self.channel)
-            time.sleep(0.1)  # Kanal değişikliği için bekle
-            self.pn532.deinit()
+            if hasattr(self, 'pn532'):
+                self.multiplexer.select_channel(self.channel)
+                time.sleep(0.1)  # Kanal değişikliği için bekle
+                self.pn532.deinit()
         except Exception as e:
             print(f"NFC okuyucu temizleme hatası: {str(e)}")
             print("Hata detayı:", type(e).__name__)
