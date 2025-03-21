@@ -5,6 +5,7 @@ import time
 import threading
 import os
 import logging
+import unicodedata
 
 # Logger kurulumu
 logger = logging.getLogger(__name__)
@@ -19,13 +20,35 @@ except Exception as e:
     logger.error(f"Config dosyası yüklenemedi: {str(e)}")
     config = {"lcd_channel": 2, "lcd_address": 0x27}  # Varsayılan değerler
 
+# Türkçe gün isimleri ve ASCII karşılıkları
 days_tr = ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz']
+
+# Özel Türkçe karakterler için özel karakterler ve eşleşmeleri
+tr_to_ascii = {
+    'ı': 'i', 'İ': 'I', 'ğ': 'g', 'Ğ': 'G',
+    'ü': 'u', 'Ü': 'U', 'ş': 's', 'Ş': 'S',
+    'ö': 'o', 'Ö': 'O', 'ç': 'c', 'Ç': 'C',
+    'â': 'a', 'î': 'i', 'û': 'u'
+}
+
+# Özel karakterler için harita
 custom_chars = {}  # boş, özel karakter gerekirse eklenebilir
 
 lcd = None
 idle_thread = None
 idle_thread_running = False
 lcd_lock = threading.Lock()  # LCD'ye erişim için thread kilidi
+
+def convert_to_ascii(text):
+    """Türkçe karakterleri ASCII eşdeğerlerine dönüştürür"""
+    result = ""
+    for char in text:
+        if char in tr_to_ascii:
+            result += tr_to_ascii[char]
+        else:
+            # Diğer özel karakterleri yakın ASCII eşdeğerlerine dönüştür
+            result += unicodedata.normalize('NFKD', char).encode('ASCII', 'ignore').decode('ASCII')
+    return result
 
 def init_lcd():
     """LCD'yi başlatır"""
@@ -46,8 +69,12 @@ def init_lcd():
         with lcd_lock:
             if not SIMULATION_MODE:
                 select_channel(config['lcd_channel'])
-            lcd = CharLCD('PCF8574', config['lcd_address'], cols=20, rows=4)
+            lcd = CharLCD('PCF8574', config['lcd_address'], cols=20, rows=4, charmap='A00')
             lcd.clear()
+            
+            # Özel karakterleri yükle (eğer kullanılacaksa)
+            # LCD'de özel karakterler için ayarlar yapılabilir
+            
             return True
     except Exception as e:
         logger.error(f"LCD başlatma hatası: {str(e)}")
@@ -96,7 +123,7 @@ def update_idle_screen():
                 lcd.cursor_pos = (2, 0)
                 lcd.write_string("AI LAB".center(20))
                 lcd.cursor_pos = (3, 0)
-                lcd.write_string("Kartinizi okutunuz".center(20))
+                lcd.write_string(convert_to_ascii("Kartinizi okutunuz".center(20)))
         except Exception as e:
             logger.error(f"LCD güncellemesi sırasında hata: {str(e)}")
             print(f"[HATA] LCD güncellemesi sırasında hata: {str(e)}")
@@ -118,11 +145,11 @@ def show_scan_result(direction, opened):
             
             lcd.clear()
             lcd.cursor_pos = (0, 0)
-            lcd.write_string("Kart okundu!".center(20))
+            lcd.write_string(convert_to_ascii("Kart okundu!".center(20)))
             lcd.cursor_pos = (1, 0)
-            lcd.write_string(direction.center(20))
+            lcd.write_string(convert_to_ascii(direction.center(20)))
             lcd.cursor_pos = (2, 0)
-            lcd.write_string(("Kapi acildi" if opened else "Kapi acilmadi").center(20))
+            lcd.write_string(convert_to_ascii(("Kapi acildi" if opened else "Kapi acilmadi").center(20)))
         
         # Belirlenen süre kadar bekle
         time.sleep(2)
@@ -147,7 +174,7 @@ def cleanup():
                     select_channel(config['lcd_channel'])
                 
                 lcd.clear()
-                lcd.write_string("Sistem kapatiliyor...".center(20))
+                lcd.write_string(convert_to_ascii("Sistem kapatiliyor...".center(20)))
                 time.sleep(1)
                 lcd.clear()
                 

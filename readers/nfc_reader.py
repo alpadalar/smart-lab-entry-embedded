@@ -8,7 +8,7 @@ from utils.logger import log
 from controllers.relay_controller import trigger_relay
 from controllers.led_controller import show_color
 from controllers.buzzer_controller import beep
-from controllers.lcd_controller import show_scan_result, start_idle_screen, stop_idle_screen
+from controllers.lcd_controller import show_scan_result, start_idle_screen, stop_idle_screen, convert_to_ascii
 import os
 import yaml
 import logging
