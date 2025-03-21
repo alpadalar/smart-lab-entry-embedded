@@ -19,28 +19,59 @@ import RPi.GPIO as GPIO
 
 class AccessControlSystem:
     def __init__(self):
-        # Donanım bileşenlerini başlat
-        self.multiplexer = I2CMultiplexer()
-        self.inside_nfc = NFCReader(self.multiplexer, is_inside=True)
-        self.outside_nfc = NFCReader(self.multiplexer, is_inside=False)
-        self.lcd = LCDDisplay(self.multiplexer)
-        self.inside_led = LEDStrip(INSIDE_LED_CHANNEL, is_inside=True)
-        self.outside_led = LEDStrip(OUTSIDE_LED_CHANNEL, is_inside=False)
-        self.inside_buzzer = Buzzer(INSIDE_BUZZER_CHANNEL, is_inside=True)
-        self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_CHANNEL, is_inside=False)
-        self.relay = Relay()
-        
-        # Yardımcı bileşenleri başlat
-        self.api = APIClient()
-        self.logger = Logger()
-        
-        # LED efektlerini başlat
-        self.inside_led.start_breathing()
-        self.outside_led.start_breathing()
-        
-        # LCD'yi başlat
-        self.lcd.show_welcome()
-        
+        try:
+            print("Sistem başlatılıyor...")
+            
+            # Donanım bileşenlerini başlat
+            print("I2C Multiplexer başlatılıyor...")
+            self.multiplexer = I2CMultiplexer()
+            
+            print("NFC okuyucular başlatılıyor...")
+            self.inside_nfc = NFCReader(self.multiplexer, is_inside=True)
+            self.outside_nfc = NFCReader(self.multiplexer, is_inside=False)
+            
+            print("LCD ekran başlatılıyor...")
+            self.lcd = LCDDisplay(self.multiplexer)
+            
+            print("LED şeritler başlatılıyor...")
+            self.inside_led = LEDStrip(INSIDE_LED_CHANNEL, is_inside=True)
+            self.outside_led = LEDStrip(OUTSIDE_LED_CHANNEL, is_inside=False)
+            
+            print("Buzzer'lar başlatılıyor...")
+            self.inside_buzzer = Buzzer(INSIDE_BUZZER_CHANNEL, is_inside=True)
+            self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_CHANNEL, is_inside=False)
+            
+            print("Röle başlatılıyor...")
+            self.relay = Relay()
+            
+            # Yardımcı bileşenleri başlat
+            print("API istemcisi başlatılıyor...")
+            self.api = APIClient()
+            
+            print("Logger başlatılıyor...")
+            self.logger = Logger()
+            
+            # LED efektlerini başlat
+            print("LED efektleri başlatılıyor...")
+            self.inside_led.start_breathing()
+            self.outside_led.start_breathing()
+            
+            # LCD'yi başlat
+            print("Karşılama ekranı gösteriliyor...")
+            self.lcd.show_welcome()
+            
+            print("Sistem başarıyla başlatıldı!")
+            
+        except Exception as e:
+            print(f"\nSistem başlatılırken hata oluştu: {str(e)}")
+            print("\nLütfen şunları kontrol edin:")
+            print("1. Tüm modüller doğru bağlı mı?")
+            print("2. I2C etkin mi? (sudo raspi-config)")
+            print("3. GPIO pinleri doğru ayarlanmış mı?")
+            print("4. I2C adresleri doğru mu?")
+            print("\nHata detayı:", str(e))
+            raise
+
     def handle_card_read(self, card_uid, is_inside):
         """Kart okuma işlemini yönetir"""
         try:

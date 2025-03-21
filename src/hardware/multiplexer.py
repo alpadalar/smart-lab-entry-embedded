@@ -4,13 +4,29 @@ from src.config import MULTIPLEXER_ADDR, I2C_BUS
 
 class I2CMultiplexer:
     def __init__(self):
-        self.bus = smbus.SMBus(I2C_BUS)
+        try:
+            self.bus = smbus.SMBus(I2C_BUS)
+            # Multiplexer'ın varlığını kontrol et
+            self.bus.read_byte(MULTIPLEXER_ADDR)
+            print(f"I2C Multiplexer (0x{MULTIPLEXER_ADDR:02X}) başarıyla başlatıldı.")
+        except Exception as e:
+            print(f"I2C Multiplexer başlatılamadı: {str(e)}")
+            print("Lütfen şunları kontrol edin:")
+            print("1. I2C etkin mi? (sudo raspi-config)")
+            print("2. Modül doğru bağlı mı?")
+            print("3. I2C adresi doğru mu?")
+            raise
         
     def select_channel(self, channel):
         """Belirtilen kanalı seçer"""
         if 0 <= channel <= 7:
-            self.bus.write_byte(MULTIPLEXER_ADDR, 1 << channel)
-            time.sleep(0.01)  # Kanal değişikliği için kısa bekleme
+            try:
+                self.bus.write_byte(MULTIPLEXER_ADDR, 1 << channel)
+                time.sleep(0.01)  # Kanal değişikliği için kısa bekleme
+                print(f"Kanal {channel} seçildi.")
+            except Exception as e:
+                print(f"Kanal {channel} seçilemedi: {str(e)}")
+                raise
         else:
             raise ValueError("Kanal numarası 0-7 arasında olmalıdır")
             

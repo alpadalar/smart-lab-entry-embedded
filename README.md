@@ -1,46 +1,117 @@
-# Akıllı Laboratuvar Giriş Sistemi
+# Smart Lab Entry System
 
-Bu proje, Raspberry Pi 5 üzerinde çalışan bir laboratuvar giriş kontrol sistemidir. Sistem, NFC kartları kullanarak giriş-çıkış kontrolü yapar ve tüm olayları loglar.
+Raspberry Pi 5 tabanlı akıllı laboratuvar giriş sistemi. NFC kart okuyucular, LED şeritler, LCD ekran ve USB röle kullanarak güvenli giriş kontrolü sağlar.
 
-## Özellikler
+## Donanım Gereksinimleri
 
-- İki adet PN532 NFC okuyucu (iç ve dış)
-- PCA9548A I²C multiplexer ile donanım yönetimi
-- 20x4 I²C LCD ekran
-- İki adet WS2812B LED şerit (8'er LED)
-- İki adet pasif buzzer
-- USB röle kartı ile kapı kontrolü
-- API entegrasyonu
-- Detaylı loglama sistemi
-
-## Gereksinimler
-
-- Python 3.7+
 - Raspberry Pi 5
-- Gerekli donanımlar (NFC okuyucular, LCD, LED şeritler, vb.)
-- Gerekli Python paketleri (requirements.txt içinde listelenmiştir)
+- 2x PN532 NFC Okuyucu
+- 1x PCA9548A I2C Multiplexer
+- 1x 20x4 I2C LCD Ekran
+- 2x WS2812B LED Şerit (30 LED)
+- 2x Pasif Buzzer
+- 1x USB Röle Kartı
+- 1x 5V Güç Kaynağı
+- Jumper Kablolar
+- Breadboard (opsiyonel)
+
+## Donanım Bağlantıları
+
+### I2C Multiplexer (PCA9548A) Bağlantıları
+- VCC -> 3.3V
+- GND -> GND
+- SDA -> GPIO2 (Pin 3)
+- SCL -> GPIO3 (Pin 5)
+- A0, A1, A2 -> GND (Adres: 0x70)
+
+### İç NFC Okuyucu (PN532) Bağlantıları
+- VCC -> 3.3V
+- GND -> GND
+- SDA -> I2C Multiplexer Kanal 0
+- SCL -> I2C Multiplexer Kanal 0
+- IRQ -> GPIO17 (Pin 11)
+- RST -> GPIO27 (Pin 13)
+
+### Dış NFC Okuyucu (PN532) Bağlantıları
+- VCC -> 3.3V
+- GND -> GND
+- SDA -> I2C Multiplexer Kanal 1
+- SCL -> I2C Multiplexer Kanal 1
+- IRQ -> GPIO22 (Pin 15)
+- RST -> GPIO23 (Pin 16)
+
+### LCD Ekran (20x4 I2C) Bağlantıları
+- VCC -> 5V
+- GND -> GND
+- SDA -> I2C Multiplexer Kanal 2
+- SCL -> I2C Multiplexer Kanal 2
+- Adres: 0x27 (varsayılan)
+
+### İç LED Şerit Bağlantıları
+- VCC -> 5V
+- GND -> GND
+- DIN -> GPIO18 (Pin 12)
+- I2C Kanal: 3
+
+### Dış LED Şerit Bağlantıları
+- VCC -> 5V
+- GND -> GND
+- DIN -> GPIO12 (Pin 32)
+- I2C Kanal: 4
+
+### İç Buzzer Bağlantıları
+- VCC -> GPIO23 (Pin 16)
+- GND -> GND
+- I2C Kanal: 5
+
+### Dış Buzzer Bağlantıları
+- VCC -> GPIO24 (Pin 18)
+- GND -> GND
+- I2C Kanal: 6
+
+### USB Röle Kartı
+- USB port üzerinden bağlanır
+- Röle 1 kullanılır
 
 ## Kurulum
 
 1. Gerekli sistem paketlerini yükleyin:
 ```bash
 sudo apt update
-sudo apt install python3-venv python3-full python3-dev build-essential python3-wheel
+sudo apt install -y python3-pip python3-venv git build-essential python3-dev
 ```
 
-2. Sanal ortam oluşturun ve aktifleştirin:
+2. I2C'yi etkinleştirin:
+```bash
+sudo raspi-config
+# Interface Options -> I2C -> Enable
+```
+
+3. Projeyi klonlayın:
+```bash
+git clone https://github.com/yourusername/smart-lab-entry-embedded.git
+cd smart-lab-entry-embedded
+```
+
+4. Sanal ortam oluşturun ve aktifleştirin:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-3. usbrelay paketini kurun:
+5. Gerekli Python paketlerini yükleyin:
 ```bash
-# usbrelay kaynak kodunu indir
+pip install -r requirements.txt
+```
+
+6. usbrelay kurulumu:
+```bash
+# Gerekli build araçlarını yükle
+sudo apt install python3-dev build-essential python3-wheel
+
+# usbrelay kaynak kodunu indir ve derle
 git clone https://github.com/darrylb123/usbrelay.git
 cd usbrelay
-
-# usbrelay'i derle ve kur
 make
 sudo make install
 
@@ -51,24 +122,6 @@ pip install -e .
 cd ../..
 ```
 
-4. Diğer Python paketlerini yükleyin:
-```bash
-pip install -r requirements.txt
-```
-
-5. Donanımları bağlayın:
-   - İç NFC okuyucu -> Multiplexer Kanal 0
-   - Dış NFC okuyucu -> Multiplexer Kanal 1
-   - LCD Ekran -> Multiplexer Kanal 2
-   - LED şeritler -> GPIO18 (iç) ve GPIO23 (dış)
-   - Buzzerlar -> GPIO17 (iç) ve GPIO27 (dış)
-   - USB röle kartı -> USB port
-
-6. `config.py` dosyasını düzenleyin:
-   - API URL'sini güncelleyin
-   - Gerekirse pin numaralarını değiştirin
-   - Diğer yapılandırma ayarlarını yapın
-
 ## Kullanım
 
 1. Sanal ortamı aktifleştirin:
@@ -76,35 +129,45 @@ pip install -r requirements.txt
 source venv/bin/activate
 ```
 
-2. Programı başlatın:
+2. Programı çalıştırın:
 ```bash
-python src/main.py
+python -m src.main
 ```
 
-3. Program çalıştığında:
-   - LED şeritler beyaz nefes alma efekti ile yanar
-   - LCD ekranda karşılama mesajı görüntülenir
-   - NFC okuyucular kart beklemeye başlar
-   - Tüm olaylar `access_log.txt` dosyasına kaydedilir
+## Özellikler
 
-4. Programı sonlandırmak için:
+- İç ve dış NFC kart okuma
+- LED şerit ile görsel geri bildirim
+- Buzzer ile sesli geri bildirim
+- LCD ekranda durum gösterimi
+- USB röle ile kapı kontrolü
+- Detaylı loglama
+- Hata yönetimi ve kurtarma
+
+## Güvenlik
+
+- NFC kartlar şifrelidir
+- API ile merkezi erişim kontrolü
+- Hata durumunda güvenli kapanma
+- Detaylı loglama
+
+## Hata Ayıklama
+
+1. I2C cihazlarını kontrol edin:
 ```bash
-deactivate
+i2cdetect -y 1
 ```
 
-## LED Efektleri
+2. GPIO pinlerini kontrol edin:
+```bash
+gpio readall
+```
 
-- Bekleme: Beyaz nefes alma efekti
-- Başarılı geçiş: Yeşil (2 saniye)
-- Başarısız geçiş: Mavi (2 saniye)
-- Hata: Kırmızı (2 saniye)
-
-## Buzzer Tepkileri
-
-- Başarılı geçiş: İki kısa bip
-- Başarısız geçiş: Bir kısa bip
-- Hata: Bir uzun bip
+3. USB röle durumunu kontrol edin:
+```bash
+lsusb
+```
 
 ## Lisans
 
-Bu proje MIT lisansı altında lisanslanmıştır. 
+Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICENSE) dosyasına bakın. 
