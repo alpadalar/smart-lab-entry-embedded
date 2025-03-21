@@ -16,6 +16,10 @@ from src.config import (
 )
 import RPi.GPIO as GPIO
 
+class HardwareError(Exception):
+    """Donanım hataları için özel istisna sınıfı"""
+    pass
+
 class AccessControlSystem:
     def __init__(self):
         try:
@@ -26,7 +30,11 @@ class AccessControlSystem:
             
             # Donanım bileşenlerini başlat
             print("I2C Multiplexer başlatılıyor...")
-            self.multiplexer = I2CMultiplexer()
+            try:
+                self.multiplexer = I2CMultiplexer()
+            except Exception as e:
+                raise HardwareError(f"I2C Multiplexer başlatılamadı: {str(e)}\n"
+                                  "Lütfen I2C bağlantılarını ve adresini kontrol edin.")
             
             print("NFC okuyucular başlatılıyor...")
             try:
@@ -37,18 +45,34 @@ class AccessControlSystem:
                                   "Lütfen I2C bağlantılarını ve multiplexer kanallarını kontrol edin.")
             
             print("LCD ekran başlatılıyor...")
-            self.lcd = LCDDisplay(self.multiplexer)
+            try:
+                self.lcd = LCDDisplay(self.multiplexer)
+            except Exception as e:
+                raise HardwareError(f"LCD ekran başlatılamadı: {str(e)}\n"
+                                  "Lütfen I2C adresini ve kontrast ayarını kontrol edin.")
             
             print("LED şeritler başlatılıyor...")
-            self.inside_led = LEDStrip(INSIDE_LED_PIN, is_inside=True)
-            self.outside_led = LEDStrip(OUTSIDE_LED_PIN, is_inside=False)
+            try:
+                self.inside_led = LEDStrip(INSIDE_LED_PIN, is_inside=True)
+                self.outside_led = LEDStrip(OUTSIDE_LED_PIN, is_inside=False)
+            except Exception as e:
+                raise HardwareError(f"LED şeritler başlatılamadı: {str(e)}\n"
+                                  "Lütfen güç kaynağını ve DIN pinlerini kontrol edin.")
             
             print("Buzzer'lar başlatılıyor...")
-            self.inside_buzzer = Buzzer(INSIDE_BUZZER_PIN, is_inside=True)
-            self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_PIN, is_inside=False)
+            try:
+                self.inside_buzzer = Buzzer(INSIDE_BUZZER_PIN, is_inside=True)
+                self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_PIN, is_inside=False)
+            except Exception as e:
+                raise HardwareError(f"Buzzer'lar başlatılamadı: {str(e)}\n"
+                                  "Lütfen VCC pinlerini kontrol edin.")
             
             print("Röle başlatılıyor...")
-            self.relay = Relay()
+            try:
+                self.relay = Relay()
+            except Exception as e:
+                raise HardwareError(f"USB röle başlatılamadı: {str(e)}\n"
+                                  "Lütfen USB bağlantısını kontrol edin.")
             
             # Yardımcı bileşenleri başlat
             print("API istemcisi başlatılıyor...")
@@ -68,14 +92,13 @@ class AccessControlSystem:
             
             print("Sistem başarıyla başlatıldı!")
             
+        except HardwareError as e:
+            print(f"\nDonanım Hatası: {str(e)}")
+            self.cleanup()
+            raise
         except Exception as e:
-            print(f"\nSistem başlatılırken hata oluştu: {str(e)}")
-            print("\nLütfen şunları kontrol edin:")
-            print("1. Tüm modüller doğru bağlı mı?")
-            print("2. I2C etkin mi? (sudo raspi-config)")
-            print("3. GPIO pinleri doğru ayarlanmış mı?")
-            print("4. I2C adresleri doğru mu?")
-            print("\nHata detayı:", str(e))
+            print(f"\nBeklenmeyen Hata: {str(e)}")
+            self.cleanup()
             raise
 
     def handle_card_read(self, card_uid, is_inside):
@@ -148,24 +171,38 @@ class AccessControlSystem:
     def cleanup(self):
         """Kaynakları temizler"""
         try:
+            print("Sistem kapatılıyor...")
+            
             # LED'leri temizle
-            self.inside_led.cleanup()
-            self.outside_led.cleanup()
+            if hasattr(self, 'inside_led'):
+                self.inside_led.cleanup()
+            if hasattr(self, 'outside_led'):
+                self.outside_led.cleanup()
             
             # Buzzer'ları temizle
-            self.inside_buzzer.cleanup()
-            self.outside_buzzer.cleanup()
+            if hasattr(self, 'inside_buzzer'):
+                self.inside_buzzer.cleanup()
+            if hasattr(self, 'outside_buzzer'):
+                self.outside_buzzer.cleanup()
             
             # LCD'yi temizle
-            self.lcd.clear()
-            self.lcd.set_backlight(False)
+            if hasattr(self, 'lcd'):
+                self.lcd.clear()
+                self.lcd.set_backlight(False)
             
             # NFC okuyucuları temizle
-            self.inside_nfc.cleanup()
-            self.outside_nfc.cleanup()
+            if hasattr(self, 'inside_nfc'):
+                self.inside_nfc.cleanup()
+            if hasattr(self, 'outside_nfc'):
+                self.outside_nfc.cleanup()
             
             # Multiplexer'ı temizle
-            self.multiplexer.cleanup()
+            if hasattr(self, 'multiplexer'):
+                self.multiplexer.cleanup()
+            
+            # Röle'i temizle
+            if hasattr(self, 'relay'):
+                self.relay.cleanup()
             
             # GPIO'yu temizle
             GPIO.cleanup()
