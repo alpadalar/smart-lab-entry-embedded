@@ -30,8 +30,8 @@ class NFCReader:
             # PN532'yi başlat
             print(f"PN532 başlatılıyor (Adres: 0x{NFC_ADDR:02X})...")
             
-            # PN532'yi I2C adresiyle başlat
-            self.pn532 = PN532_I2C(self.i2c, address=NFC_ADDR, debug=True)
+            # PN532'yi başlat
+            self.pn532 = PN532_I2C(self.i2c, debug=True)
             
             # PN532'yi yapılandır
             print("PN532 yapılandırılıyor...")
