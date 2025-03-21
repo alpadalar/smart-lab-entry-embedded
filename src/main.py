@@ -1,17 +1,20 @@
 import time
-import threading
-from hardware.multiplexer import I2CMultiplexer
-from hardware.nfc_reader import NFCReader
-from hardware.lcd_display import LCDDisplay
-from hardware.led_strip import LEDStrip
-from hardware.buzzer import Buzzer
-from hardware.relay import Relay
-from utils.api_client import APIClient
-from utils.logger import Logger
-from config import (
-    INSIDE_LED_PIN, OUTSIDE_LED_PIN,
-    INSIDE_BUZZER_PIN, OUTSIDE_BUZZER_PIN
+import signal
+import sys
+from src.hardware.multiplexer import I2CMultiplexer
+from src.hardware.nfc_reader import NFCReader
+from src.hardware.lcd_display import LCDDisplay
+from src.hardware.led_strip import LEDStrip
+from src.hardware.buzzer import Buzzer
+from src.hardware.relay import Relay
+from src.utils.api_client import APIClient
+from src.config import (
+    INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL,
+    INSIDE_LED_CHANNEL, OUTSIDE_LED_CHANNEL,
+    INSIDE_BUZZER_CHANNEL, OUTSIDE_BUZZER_CHANNEL,
+    RELAY_CHANNEL
 )
+from utils.logger import Logger
 
 class AccessControlSystem:
     def __init__(self):
@@ -20,10 +23,10 @@ class AccessControlSystem:
         self.inside_nfc = NFCReader(self.multiplexer, is_inside=True)
         self.outside_nfc = NFCReader(self.multiplexer, is_inside=False)
         self.lcd = LCDDisplay(self.multiplexer)
-        self.inside_led = LEDStrip(INSIDE_LED_PIN, is_inside=True)
-        self.outside_led = LEDStrip(OUTSIDE_LED_PIN, is_inside=False)
-        self.inside_buzzer = Buzzer(INSIDE_BUZZER_PIN, is_inside=True)
-        self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_PIN, is_inside=False)
+        self.inside_led = LEDStrip(INSIDE_LED_CHANNEL, is_inside=True)
+        self.outside_led = LEDStrip(OUTSIDE_LED_CHANNEL, is_inside=False)
+        self.inside_buzzer = Buzzer(INSIDE_BUZZER_CHANNEL, is_inside=True)
+        self.outside_buzzer = Buzzer(OUTSIDE_BUZZER_CHANNEL, is_inside=False)
         self.relay = Relay()
         
         # Yardımcı bileşenleri başlat
