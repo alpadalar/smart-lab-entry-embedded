@@ -39,12 +39,16 @@ check_error "Build araçları kurulumu başarısız"
 
 # usbrelay kurulumu
 echo -e "${YELLOW}usbrelay kurulumu yapılıyor...${NC}"
-if [ ! -d "~/usbrelay" ]; then
-    echo -e "${RED}usbrelay dizini bulunamadı!${NC}"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+USBRELAY_DIR="$SCRIPT_DIR/usbrelay"
+
+if [ ! -d "$USBRELAY_DIR" ]; then
+    echo -e "${RED}usbrelay dizini bulunamadı! ($USBRELAY_DIR)${NC}"
+    echo -e "${YELLOW}Lütfen usbrelay dizininin doğru konumda olduğundan emin olun.${NC}"
     exit 1
 fi
 
-cd ~/usbrelay
+cd "$USBRELAY_DIR"
 check_error "usbrelay dizinine geçilemedi"
 
 make
