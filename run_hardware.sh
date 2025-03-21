@@ -1,6 +1,9 @@
 #!/bin/bash
 
-# Simülasyon modunu false olarak ayarla
+# GPIO factory olarak rpigpio kullan
+export GPIOZERO_PIN_FACTORY=rpigpio
+
+# Gerçek donanım modu
 export SIMULATION_MODE=false
 
 # Sanal ortamın mutlak yolunu belirt
@@ -12,6 +15,6 @@ if [ -d "$VENV_PATH" ]; then
     . "$VENV_PATH/bin/activate"
 fi
 
-# Sudo ile çalıştır ve Python yolunu belirt
-echo "Program root yetkileriyle başlatılıyor..."
-sudo PYTHONPATH="$PWD" SIMULATION_MODE=false python3 main.py 
+# Root yetkisiyle çalıştır
+echo "Program root yetkisiyle başlatılıyor..."
+sudo PYTHONPATH="$PWD" GPIOZERO_PIN_FACTORY=rpigpio SIMULATION_MODE=false python3 main.py 

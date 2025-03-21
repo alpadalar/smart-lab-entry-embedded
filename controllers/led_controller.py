@@ -17,11 +17,18 @@ if SIMULATION_MODE:
 else:
     # Gerçek donanım modu
     from gpiozero import PWMLED
+    print("[LED] Gerçek donanım modu kullanılıyor")
+
+# README'de belirtilen pinleri kullan
+led_pins = {
+    "inside": 18,  # GPIO18 (Pin 12)
+    "outside": 12  # GPIO12 (Pin 32)
+}
 
 # LED nesnelerini oluştur
 leds = {
-    "inside": PWMLED(config['led_pins']['inside']),
-    "outside": PWMLED(config['led_pins']['outside'])
+    "inside": PWMLED(led_pins["inside"]),
+    "outside": PWMLED(led_pins["outside"])
 }
 
 def breathing_effect(led):

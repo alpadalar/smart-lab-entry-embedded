@@ -15,11 +15,18 @@ if SIMULATION_MODE:
 else:
     # Gerçek donanım modu
     from gpiozero import Buzzer
+    print("[BUZZER] Gerçek donanım modu kullanılıyor")
+
+# README'de belirtilen pinleri kullan
+buzzer_pins = {
+    "inside": 23,  # GPIO23 (Pin 16)
+    "outside": 24  # GPIO24 (Pin 18)
+}
 
 # Buzzer nesnelerini oluştur
 buzzers = {
-    "inside": Buzzer(config['buzzer_pins']['inside']),
-    "outside": Buzzer(config['buzzer_pins']['outside'])
+    "inside": Buzzer(buzzer_pins["inside"]),
+    "outside": Buzzer(buzzer_pins["outside"])
 }
 
 def beep(role, pattern):

@@ -8,12 +8,14 @@ nfc_channels:
   outside: 1
 lcd_channel: 2
 
+# Bu değerler artık controller'lar içinde sabit tanımlandı
+# ve kullanılmıyor, fakat geriye dönük uyumluluk için tutuldu
 buzzer_pins:
-  inside: 17
-  outside: 27
+  inside: 23
+  outside: 24
 
 led_pins:
   inside: 18
-  outside: 19
+  outside: 12
 
 led_pixel_count: 8 

@@ -120,14 +120,33 @@ cd ../..
 
 ## Kullanım
 
-1. Sanal ortamı aktifleştirin:
+### Simülasyon Modunda Çalıştırma
+
+Donanım bağlantısı olmadan, bilgisayar üzerinde test amaçlı çalıştırmak için:
+
 ```bash
-source venv/bin/activate
+bash run.sh
 ```
 
-2. Programı çalıştırın:
+veya
+
 ```bash
-python -m src.main
+export SIMULATION_MODE=true
+python main.py
+```
+
+### Gerçek Donanım Modunda Çalıştırma
+
+Raspberry Pi 5 üzerinde gerçek donanımla:
+
+```bash
+bash run_hardware.sh
+```
+
+veya
+
+```bash
+sudo GPIOZERO_PIN_FACTORY=rpigpio SIMULATION_MODE=false python main.py
 ```
 
 ## Özellikler
