@@ -22,7 +22,7 @@ class NFCReader:
             time.sleep(0.1)  # Kanal değişikliği için bekle
             
             # PN532'yi başlat
-            self.pn532 = PN532_I2C(self.i2c, address=NFC_ADDR, debug=True)
+            self.pn532 = PN532_I2C(self.i2c, debug=True)
             
             # PN532'yi yapılandır
             self.pn532.SAM_configuration()
