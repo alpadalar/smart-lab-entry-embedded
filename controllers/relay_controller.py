@@ -9,6 +9,7 @@ import os
 import threading
 from utils.simulation import is_simulation_mode
 from utils.exceptions import RelayInitializationError
+import yaml
 
 # USB röle kartı için
 try:
@@ -352,4 +353,48 @@ def list_usb_relays():
         
     except Exception as e:
         print(f"USB röle listeleme hatası: {e}")
-        return [] 
+        return []
+
+# Röleyi tek bir istek ile tetiklemek için kullanılan fonksiyon
+def trigger_relay(duration=1.0, relay_id=None):
+    """
+    Belirtilen röleyi belirli bir süre için tetikler (aktif eder, sonra deaktif eder).
+    
+    Args:
+        duration: Aktivasyon süresi (saniye)
+        relay_id: Tetiklenecek röle ID'si (None ise varsayılan röle kullanılır)
+    
+    Returns:
+        bool: İşlem başarılı ise True
+    """
+    logger = logging.getLogger(__name__)
+    
+    try:
+        # Yapılandırma dosyasından röle tipini ve ID'sini al
+        try:
+            with open("config/config.yaml") as f:
+                config = yaml.safe_load(f)
+                relay_type = config.get('relay', {}).get('type', 'usb')
+                default_relay_id = config.get('relay', {}).get('id', None)
+        except Exception as e:
+            logger.warning(f"Röle yapılandırması okunamadı: {str(e)}, varsayılan değerler kullanılıyor")
+            relay_type = 'usb'
+            default_relay_id = None
+            
+        # Parametre olarak relay_id verilmediyse varsayılanı kullan
+        if relay_id is None:
+            relay_id = default_relay_id
+            
+        # Röle kontrolcüsünü oluştur
+        relay = RelayController(relay_type=relay_type, pin_or_id=relay_id)
+        
+        # Röleyi pulse et
+        success = relay.pulse(duration)
+        
+        # Kaynakları temizle
+        relay.close()
+        
+        return success
+    except Exception as e:
+        logger.error(f"Röle tetikleme hatası: {str(e)}")
+        return False 
