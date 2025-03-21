@@ -27,3 +27,11 @@ class NFCReader:
         except Exception as e:
             print(f"NFC okuma hatası: {e}")
             return None 
+
+    def cleanup(self):
+        """NFC okuyucuyu temizler"""
+        try:
+            self.multiplexer.select_channel(self.channel)
+            self.pn532.deinit()
+        except Exception as e:
+            print(f"NFC okuyucu temizleme hatası: {str(e)}") 

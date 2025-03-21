@@ -20,3 +20,11 @@ class I2CMultiplexer:
             self.bus.close()
         except:
             pass 
+
+    def cleanup(self):
+        """Multiplexer'ı temizler"""
+        try:
+            # Tüm kanalları kapat
+            self.bus.write_byte(MULTIPLEXER_ADDR, 0x00)
+        except Exception as e:
+            print(f"Multiplexer temizleme hatası: {str(e)}") 

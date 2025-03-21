@@ -8,13 +8,14 @@ from src.hardware.led_strip import LEDStrip
 from src.hardware.buzzer import Buzzer
 from src.hardware.relay import Relay
 from src.utils.api_client import APIClient
+from src.utils.logger import Logger
 from src.config import (
     INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL,
     INSIDE_LED_CHANNEL, OUTSIDE_LED_CHANNEL,
     INSIDE_BUZZER_CHANNEL, OUTSIDE_BUZZER_CHANNEL,
     RELAY_CHANNEL
 )
-from utils.logger import Logger
+import RPi.GPIO as GPIO
 
 class AccessControlSystem:
     def __init__(self):
@@ -109,8 +110,33 @@ class AccessControlSystem:
                 
     def cleanup(self):
         """Kaynakları temizler"""
-        self.inside_buzzer.cleanup()
-        self.outside_buzzer.cleanup()
+        try:
+            # LED'leri temizle
+            self.inside_led.cleanup()
+            self.outside_led.cleanup()
+            
+            # Buzzer'ları temizle
+            self.inside_buzzer.cleanup()
+            self.outside_buzzer.cleanup()
+            
+            # LCD'yi temizle
+            self.lcd.clear()
+            self.lcd.set_backlight(False)
+            
+            # NFC okuyucuları temizle
+            self.inside_nfc.cleanup()
+            self.outside_nfc.cleanup()
+            
+            # Multiplexer'ı temizle
+            self.multiplexer.cleanup()
+            
+            # GPIO'yu temizle
+            GPIO.cleanup()
+            
+            print("Tüm kaynaklar temizlendi.")
+            
+        except Exception as e:
+            print(f"Temizleme sırasında hata oluştu: {str(e)}")
 
 if __name__ == "__main__":
     system = AccessControlSystem()

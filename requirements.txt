@@ -5,6 +5,7 @@ RPLCD==1.3.0
 requests==2.31.0
 python-dateutil==2.8.2
 smbus-cffi==0.5.1
+lgpio==0.2.2.0
 
 # usbrelay kurulum adımları:
 # 1. Gerekli build araçlarını yükle:
