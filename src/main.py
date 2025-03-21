@@ -29,8 +29,12 @@ class AccessControlSystem:
             self.multiplexer = I2CMultiplexer()
             
             print("NFC okuyucular başlatılıyor...")
-            self.inside_nfc = NFCReader(self.multiplexer, is_inside=True)
-            self.outside_nfc = NFCReader(self.multiplexer, is_inside=False)
+            try:
+                self.inside_nfc = NFCReader(self.multiplexer, is_inside=True)
+                self.outside_nfc = NFCReader(self.multiplexer, is_inside=False)
+            except Exception as e:
+                raise HardwareError(f"NFC okuyucular başlatılamadı: {str(e)}\n"
+                                  "Lütfen I2C bağlantılarını ve multiplexer kanallarını kontrol edin.")
             
             print("LCD ekran başlatılıyor...")
             self.lcd = LCDDisplay(self.multiplexer)
