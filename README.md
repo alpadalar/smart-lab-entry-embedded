@@ -25,7 +25,7 @@ Bu proje, Raspberry Pi 5 üzerinde çalışan bir laboratuvar giriş kontrol sis
 1. Gerekli sistem paketlerini yükleyin:
 ```bash
 sudo apt update
-sudo apt install python3-venv python3-full
+sudo apt install python3-venv python3-full python3-dev build-essential python3-wheel
 ```
 
 2. Sanal ortam oluşturun ve aktifleştirin:
@@ -34,12 +34,29 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-3. Gerekli Python paketlerini yükleyin:
+3. usbrelay paketini kurun:
+```bash
+# usbrelay kaynak kodunu indir
+git clone https://github.com/darrylb123/usbrelay.git
+cd usbrelay
+
+# usbrelay'i derle ve kur
+make
+sudo make install
+
+# Python modülünü wheel olarak derle ve kur
+cd usbrelay_py
+python setup.py bdist_wheel
+pip install -e .
+cd ../..
+```
+
+4. Diğer Python paketlerini yükleyin:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Donanımları bağlayın:
+5. Donanımları bağlayın:
    - İç NFC okuyucu -> Multiplexer Kanal 0
    - Dış NFC okuyucu -> Multiplexer Kanal 1
    - LCD Ekran -> Multiplexer Kanal 2
@@ -47,7 +64,7 @@ pip install -r requirements.txt
    - Buzzerlar -> GPIO17 (iç) ve GPIO27 (dış)
    - USB röle kartı -> USB port
 
-5. `config.py` dosyasını düzenleyin:
+6. `config.py` dosyasını düzenleyin:
    - API URL'sini güncelleyin
    - Gerekirse pin numaralarını değiştirin
    - Diğer yapılandırma ayarlarını yapın

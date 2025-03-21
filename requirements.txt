@@ -1,6 +1,23 @@
 adafruit-circuitpython-pn532==2.0.9
 adafruit-circuitpython-rgb-display==3.13.0
 adafruit-circuitpython-neopixel==6.3.9
-usbrelay-py==1.0.0
 requests==2.31.0
-python-dateutil==2.8.2 
+python-dateutil==2.8.2
+
+# usbrelay kurulum adımları:
+# 1. Gerekli build araçlarını yükle:
+#    sudo apt install python3-dev build-essential python3-wheel
+#
+# 2. usbrelay kaynak kodunu indir ve derle:
+#    git clone https://github.com/darrylb123/usbrelay.git
+#    cd usbrelay
+#    make
+#    sudo make install
+#
+# 3. Python modülünü wheel olarak derle ve kur:
+#    cd usbrelay_py
+#    python setup.py bdist_wheel
+#    pip install -e .
+#    cd ../.. 
+
+
