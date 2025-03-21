@@ -11,8 +11,8 @@ class NFCReader:
         self.is_inside = is_inside
         self.channel = INSIDE_NFC_CHANNEL if is_inside else OUTSIDE_NFC_CHANNEL
         
-        # I2C bağlantısı (düşük hızda)
-        self.i2c = busio.I2C(board.SCL, board.SDA, frequency=100000)  # 100kHz
+        # I2C bağlantısı
+        self.i2c = busio.I2C(board.SCL, board.SDA)
         self.smbus = smbus.SMBus(1)
         
         # NFC okuyucuyu başlat
