@@ -2,7 +2,6 @@ adafruit-circuitpython-pn532
 usbrelay-py
 RPi.GPIO
 rpi_ws281x
-neopixel
 smbus2
 requests
 RPLCD
