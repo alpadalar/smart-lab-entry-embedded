@@ -1,0 +1,1 @@
+# Bu dosya hardware dizininin bir Python paketi olduğunu belirtir 
