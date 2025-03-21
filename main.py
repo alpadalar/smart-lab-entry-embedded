@@ -2,6 +2,16 @@ import threading
 from readers.nfc_reader import handle_reader
 from controllers.lcd_controller import init_lcd, update_idle_screen
 import yaml
+import os
+import sys
+
+# Simülasyon modunu kontrol et
+SIMULATION_MODE = os.environ.get('SIMULATION_MODE', 'true').lower() in ('true', '1', 't', 'yes')
+
+if SIMULATION_MODE:
+    print("Sistem simülasyon modunda çalışıyor. Gerçek donanım kullanılmayacak.")
+else:
+    print("Sistem gerçek donanım modunda çalışıyor.")
 
 with open("config/config.yaml") as f:
     config = yaml.safe_load(f)
@@ -18,6 +28,7 @@ threading.Thread(target=update_idle_screen, daemon=True).start()
 
 # Sonsuz döngü
 try:
+    print("Sistem başlatıldı. Çıkmak için Ctrl+C tuşlarına basın.")
     while True:
         threading.Event().wait(1)
 except KeyboardInterrupt:

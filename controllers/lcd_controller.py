@@ -1,12 +1,23 @@
-from RPLCD.i2c import CharLCD
 from datetime import datetime
 from readers.multiplexer import select_channel
 import yaml
 import time
 import threading
+import os
+
+# Simülasyon modu kontrolü
+SIMULATION_MODE = os.environ.get('SIMULATION_MODE', 'true').lower() in ('true', '1', 't', 'yes')
 
 with open("config/config.yaml") as f:
     config = yaml.safe_load(f)
+
+if SIMULATION_MODE:
+    # Simülasyon modu
+    from utils.dummy_lcd import CharLCD
+    print("[LCD] Simülasyon modu kullanılıyor")
+else:
+    # Gerçek donanım modu
+    from RPLCD.i2c import CharLCD
 
 days_tr = ['Pzt', 'Sal', 'Car', 'Per', 'Cum', 'Cmt', 'Paz']
 custom_chars = {}  # boş, özel karakter gerekirse eklenebilir

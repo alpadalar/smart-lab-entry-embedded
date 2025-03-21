@@ -1,24 +1,42 @@
-import RPi.GPIO as GPIO
 import threading
 import time
 import math
 import yaml
+import os
+
+# Simülasyon modu kontrolü
+SIMULATION_MODE = os.environ.get('SIMULATION_MODE', 'true').lower() in ('true', '1', 't', 'yes')
 
 with open("config/config.yaml") as f:
     config = yaml.safe_load(f)
 
+if SIMULATION_MODE:
+    # Simülasyon modu
+    from utils.dummy_gpio import PWM, setup, setmode, setwarnings, output, BCM, OUT
+    print("[LED] Simülasyon modu kullanılıyor")
+else:
+    # Gerçek donanım modu
+    import RPi.GPIO as GPIO
+    PWM = GPIO.PWM
+    setup = GPIO.setup
+    setmode = GPIO.setmode
+    setwarnings = GPIO.setwarnings
+    output = GPIO.output
+    BCM = GPIO.BCM
+    OUT = GPIO.OUT
+
 # GPIO ayarlarını yap
-GPIO.setmode(GPIO.BCM)
-GPIO.setwarnings(False)
+setmode(BCM)
+setwarnings(False)
 
 # LED pinlerini ayarla
-GPIO.setup(config['led_pins']['inside'], GPIO.OUT)
-GPIO.setup(config['led_pins']['outside'], GPIO.OUT)
+setup(config['led_pins']['inside'], OUT)
+setup(config['led_pins']['outside'], OUT)
 
 # PWM nesnelerini oluştur
 pwm_leds = {
-    "inside": GPIO.PWM(config['led_pins']['inside'], 100),  # 100 Hz
-    "outside": GPIO.PWM(config['led_pins']['outside'], 100)  # 100 Hz
+    "inside": PWM(config['led_pins']['inside'], 100),  # 100 Hz
+    "outside": PWM(config['led_pins']['outside'], 100)  # 100 Hz
 }
 
 # PWM başlat
@@ -41,10 +59,10 @@ def show_pattern(role, pattern, duration=2):
     """
     led_pin = config['led_pins'][role]
     for state in pattern:
-        GPIO.output(led_pin, state)
+        output(led_pin, state)
         time.sleep(0.2)
     time.sleep(duration)
-    GPIO.output(led_pin, 0)  # Kapat
+    output(led_pin, 0)  # Kapat
 
 def show_color(role, color, duration=2):
     """

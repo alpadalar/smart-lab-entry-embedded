@@ -1,7 +1,6 @@
 import threading
 import time
 from readers.multiplexer import select_channel
-from adafruit_pn532.i2c import PN532_I2C
 import board
 import busio
 from utils.api_client import send_card
@@ -10,18 +9,35 @@ from controllers.relay_controller import trigger_relay
 from controllers.led_controller import show_color
 from controllers.buzzer_controller import beep
 from controllers.lcd_controller import show_scan_result
-
+import os
 import yaml
+
+# Simülasyon modu kontrolü
+SIMULATION_MODE = os.environ.get('SIMULATION_MODE', 'true').lower() in ('true', '1', 't', 'yes')
+
 with open("config/config.yaml") as f:
     config = yaml.safe_load(f)
 
-i2c = busio.I2C(board.SCL, board.SDA)
+if SIMULATION_MODE:
+    # Simülasyon modu - NFC okuyucu taklit sınıfı kullanılır
+    from utils.dummy_nfc import DummyNFC as PN532_I2C
+    # I2C objesini oluşturmayalım
+    i2c = None
+    print("[NFC] Simülasyon modu kullanılıyor")
+else:
+    # Gerçek donanım modu - Adafruit PN532 
+    from adafruit_pn532.i2c import PN532_I2C
+    i2c = busio.I2C(board.SCL, board.SDA)
 
 def handle_reader(role, channel, is_inside, lcd_enabled=False):
+    """NFC okuyucu yönetimi"""
     select_channel(channel)
+    
     reader = PN532_I2C(i2c, debug=False)
     from controllers.led_controller import start_breathing
     start_breathing(role)
+
+    print(f"[NFC] {role} okuyucu başlatıldı")
 
     while True:
         select_channel(channel)
