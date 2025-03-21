@@ -1,6 +1,7 @@
 adafruit-circuitpython-pn532==2.0.9
 adafruit-circuitpython-rgb-display==3.13.0
 adafruit-circuitpython-neopixel==6.3.9
+adafruit-circuitpython-lcd==2.3.0
 requests==2.31.0
 python-dateutil==2.8.2
 smbus-cffi==0.5.1
