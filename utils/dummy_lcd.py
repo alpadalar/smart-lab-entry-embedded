@@ -10,6 +10,7 @@ class CharLCD:
         self.rows = rows
         self.cursor_pos = (0, 0)
         self.display = [' ' * cols for _ in range(rows)]
+        self.backlight_state = True  # Arka ışık durumu
         print(f"[DummyLCD] LCD ekran başlatıldı: {rows}x{cols}, {i2c_expander} @ 0x{address:02x}")
     
     def write_string(self, text):
@@ -44,8 +45,25 @@ class CharLCD:
         self._print_display()
     
     def _print_display(self):
+        if not self.backlight_state:
+            print("[DummyLCD] Arka ışık kapalı, ekran içeriği görünmüyor")
+            return
+        
         print("[DummyLCD] Ekran içeriği:")
         print("+" + "-" * self.cols + "+")
         for row in self.display:
             print("|" + row + "|")
-        print("+" + "-" * self.cols + "+") 
+        print("+" + "-" * self.cols + "+")
+    
+    def close(self):
+        """LCD kaynağını serbest bırakır"""
+        self.clear()
+        self.backlight_state = False
+        print("[DummyLCD] LCD ekran kapatıldı")
+    
+    def set_backlight(self, enabled):
+        """LCD arka aydınlatmasını açar/kapatır"""
+        self.backlight_state = enabled
+        print(f"[DummyLCD] Arka ışık {'açıldı' if enabled else 'kapatıldı'}")
+        if enabled:
+            self._print_display() 

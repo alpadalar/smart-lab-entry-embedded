@@ -36,6 +36,10 @@ buzzer_pins = {
     "outside": 24  # GPIO24 (Pin 18)
 }
 
+# Buzzer nesneleri ve zamanlayıcılar
+buzzers = {}
+beep_timers = []
+
 # Buzzer nesnelerini oluştur
 try:
     if SIMULATION_MODE:

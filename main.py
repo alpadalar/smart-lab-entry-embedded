@@ -8,7 +8,7 @@ import logging
 import atexit
 from readers.nfc_reader import handle_reader
 from readers.multiplexer import reset_multiplexer
-from controllers.lcd_controller import init_lcd, start_idle_screen, stop_idle_screen
+from controllers.lcd_controller import init_lcd, start_idle_screen, stop_idle_screen, cleanup as lcd_cleanup
 from controllers.led_controller import cleanup as led_cleanup
 from controllers.buzzer_controller import cleanup as buzzer_cleanup
 
@@ -46,9 +46,10 @@ def cleanup():
     # LCD ekran döngüsünü durdur
     try:
         stop_idle_screen()
-        logger.info("LCD ekran döngüsü durduruldu")
+        lcd_cleanup()
+        logger.info("LCD temizlendi")
     except Exception as e:
-        logger.error(f"LCD ekran durdurma hatası: {str(e)}")
+        logger.error(f"LCD temizleme hatası: {str(e)}")
     
     # LED'leri temizle
     try:

@@ -37,6 +37,12 @@ led_pins = {
     "outside": 12  # GPIO12 (Pin 32)
 }
 
+# LED nesneleri ve efekt durumu
+leds = {}
+breathing_threads = {}
+breathing_active = {}
+pattern_timers = []
+
 # LED nesnelerini oluştur
 try:
     if SIMULATION_MODE:
@@ -149,13 +155,24 @@ def show_color(role, color, duration=2):
 
 def start_breathing(role):
     """Nefes alıp veren LED efektini başlat"""
+    global breathing_threads, breathing_active
+    
+    # Önceki nefes efektini durdur
+    if role in breathing_active:
+        breathing_active[role] = False
+    
+    # Yeni nefes efektini başlat
+    breathing_active[role] = True
+    
     try:
         # GPIOZero'nun pulse metodu
         leds[role].pulse(fade_in_time=1, fade_out_time=1, n=None, background=True)
     except Exception as e:
         print(f"[LED] Nefes efekti başlatma hatası: {e}")
         # Manuel nefes efekti
-        threading.Thread(target=breathing_effect, args=(leds[role],), daemon=True).start()
+        thread = threading.Thread(target=breathing_effect, args=(leds[role],), daemon=True)
+        thread.start()
+        breathing_threads[role] = thread
 
 # Cleanup fonksiyonu - LED'leri sıfırla ve kaynakları serbest bırak
 def cleanup():
