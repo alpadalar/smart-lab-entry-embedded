@@ -11,29 +11,39 @@ class NFCReader:
         self.is_inside = is_inside
         self.channel = INSIDE_NFC_CHANNEL if is_inside else OUTSIDE_NFC_CHANNEL
         
-        # I2C bağlantısı
-        self.i2c = busio.I2C(board.SCL, board.SDA)
+        # I2C bağlantısı (düşük hızda)
+        self.i2c = busio.I2C(board.SCL, board.SDA, frequency=100000)  # 100kHz
         self.smbus = smbus.SMBus(1)
         
         # NFC okuyucuyu başlat
         try:
+            print(f"{'İç' if is_inside else 'Dış'} NFC okuyucu başlatılıyor...")
+            
             # Önce multiplexer kanalını seç
             self.multiplexer.select_channel(self.channel)
             time.sleep(0.1)  # Kanal değişikliği için bekle
             
+            # I2C cihazlarını kontrol et
+            devices = self.i2c.scan()
+            print(f"Kanal {self.channel} üzerindeki I2C cihazları: {[hex(device) for device in devices]}")
+            
             # PN532'yi başlat
+            print("PN532 başlatılıyor...")
             self.pn532 = PN532_I2C(self.i2c, debug=True)
             
             # PN532'yi yapılandır
+            print("PN532 yapılandırılıyor...")
             self.pn532.SAM_configuration()
             
             # Firmware versiyonunu kontrol et
+            print("Firmware versiyonu kontrol ediliyor...")
             version = self.pn532.get_firmware_version()
-            print(f"{'İç' if is_inside else 'Dış'} NFC okuyucu başlatıldı (Adres: 0x{NFC_ADDR:02X})")
+            print(f"{'İç' if is_inside else 'Dış'} NFC okuyucu başarıyla başlatıldı")
             print(f"Firmware versiyonu: {version}")
             
         except Exception as e:
             print(f"NFC okuyucu başlatma hatası: {str(e)}")
+            print(f"Hata detayı: {type(e).__name__}")
             self.cleanup()  # Hata durumunda kaynakları temizle
             raise
         
@@ -51,6 +61,7 @@ class NFCReader:
             return None
         except Exception as e:
             print(f"NFC okuma hatası: {e}")
+            print(f"Hata detayı: {type(e).__name__}")
             return None 
 
     def cleanup(self):
@@ -72,6 +83,7 @@ class NFCReader:
                 
         except Exception as e:
             print(f"NFC okuyucu temizleme hatası: {str(e)}")
+            print(f"Hata detayı: {type(e).__name__}")
             
     def __del__(self):
         """Nesne silindiğinde kaynakları temizle"""
