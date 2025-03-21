@@ -130,6 +130,8 @@ def _safe_lcd_operation(func):
     global lcd_error_count, lcd_disabled, lcd
     
     def wrapper(*args, **kwargs):
+        global lcd_disabled
+        
         if lcd_disabled:
             return False
         

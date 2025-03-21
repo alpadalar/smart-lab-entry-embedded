@@ -121,6 +121,7 @@ def init_nfc_reader(role, channel):
     global i2c
     
     if SIMULATION_MODE:
+        logger.info(f"{role} NFC okuyucu simülasyon modunda başlatılıyor")
         return PN532_I2C(i2c, debug=False)
     
     # Ardışık deneme sayacı
@@ -135,6 +136,10 @@ def init_nfc_reader(role, channel):
                 retries += 1
                 continue
             
+            # Önce multiplexer'ı sıfırla ve biraz bekle
+            reset_multiplexer()
+            time.sleep(0.1)
+            
             # Multiplexer kanalını seç
             if not select_channel(channel):
                 logger.error(f"{role} NFC okuyucu için kanal seçilemedi, yeniden deneniyor...")
@@ -142,31 +147,53 @@ def init_nfc_reader(role, channel):
                 retries += 1
                 continue
             
+            # Kanal seçildikten sonra biraz bekle
+            time.sleep(0.2)
+            
             # PN532 NFC okuyucuyu başlat
-            reader = PN532_I2C(i2c, debug=False)
-            
-            # SAM konfigürasyonu
-            reader.SAM_configuration()
-            
-            # Firmware sürümünü kontrol et (bağlantı testi)
-            version = reader.firmware_version
-            if not version or version == (0, 0, 0, 0):
-                raise RuntimeError("Geçersiz firmware sürümü, bağlantı hatası")
-            
-            logger.info(f"{role} NFC okuyucu başarıyla başlatıldı (Firmware: {version})")
-            print(f"[NFC] {role} okuyucu başlatıldı (Firmware: v{version[0]}.{version[1]})")
-            
-            # Başarılı başlatma
-            return reader
+            try:
+                reader = PN532_I2C(i2c, debug=False)
+                
+                # Okuyucuya biraz zaman tanı
+                time.sleep(0.1)
+                
+                # SAM konfigürasyonu
+                reader.SAM_configuration()
+                
+                # Firmware sürümünü kontrol et (bağlantı testi)
+                retries_fw = 0
+                while retries_fw < 3:  # Firmware okumaya 3 deneme hakkı ver
+                    try:
+                        version = reader.firmware_version
+                        if not version or version == (0, 0, 0, 0):
+                            raise RuntimeError("Geçersiz firmware sürümü, bağlantı hatası")
+                        break
+                    except Exception as fw_error:
+                        retries_fw += 1
+                        if retries_fw >= 3:
+                            raise fw_error
+                        logger.warning(f"Firmware sürümü okunamadı, yeniden deneniyor {retries_fw}/3")
+                        time.sleep(0.2)
+                
+                logger.info(f"{role} NFC okuyucu başarıyla başlatıldı (Firmware: {version})")
+                print(f"[NFC] {role} okuyucu başlatıldı (Firmware: v{version[0]}.{version[1]})")
+                
+                # Başarılı başlatma
+                return reader
+            except Exception as pn532_error:
+                logger.error(f"PN532 başlatma hatası: {str(pn532_error)}")
+                raise pn532_error
             
         except Exception as e:
             logger.error(f"{role} NFC okuyucu başlatma hatası ({retries+1}/{MAX_RETRIES}): {str(e)}")
             print(f"[HATA] {role} NFC okuyucu başlatılamadı: {str(e)}")
             
-            # Hata durumunda kanalı sıfırla
+            # Hata durumunda multiplexer'ı sıfırla
             reset_multiplexer()
             
             retries += 1
+            
+            # Raspberry Pi 5'in I2C bus'ına zaman tanı
             time.sleep(RETRY_DELAY)
     
     # Tüm denemeler başarısız
@@ -192,7 +219,7 @@ def handle_reader(role, channel, is_inside, lcd_enabled=False):
     from controllers.led_controller import show_color, start_breathing
     
     # Kalan yeniden başlatma denemesi
-    restart_attempts = 3
+    restart_attempts = 5  # Daha fazla deneme hakkı
     
     while restart_attempts > 0:
         try:
@@ -207,7 +234,9 @@ def handle_reader(role, channel, is_inside, lcd_enabled=False):
                 
                 # Başarısız başlatma için kırmızı göster
                 show_color(role, (255, 0, 0))
-                time.sleep(5)
+                
+                # Çok sık yeniden başlatma yapmayalım, biraz daha bekleyelim
+                time.sleep(10)
                 continue
             
             # Başarılı başlatma - nefes efekti başlat
@@ -222,104 +251,133 @@ def handle_reader(role, channel, is_inside, lcd_enabled=False):
             
             while reader_active:
                 try:
-                    # Multiplexer kanalı seç
-                    if not select_channel(channel):
-                        logger.warning(f"{role} kanalı seçilemedi, tekrar deneniyor...")
-                        time.sleep(1)
+                    # Multiplexer kanalı seç - birkaç deneme yap
+                    channel_retry = 0
+                    channel_selected = False
+                    
+                    while channel_retry < 3 and not channel_selected:
+                        channel_selected = select_channel(channel)
+                        if not channel_selected:
+                            channel_retry += 1
+                            logger.warning(f"{role} kanalı seçilemedi, tekrar deneniyor ({channel_retry}/3)...")
+                            time.sleep(0.5)
+                    
+                    if not channel_selected:
+                        logger.error(f"{role} multiplexer kanalı seçimi başarısız, 5 saniye bekledikten sonra yeniden deniyorum")
+                        time.sleep(5)
                         continue
                     
-                    # Kart okuma
-                    uid = reader.read_passive_target(timeout=0.1)
-                    consecutive_errors = 0  # Hatasız okuma, sayacı sıfırla
+                    # Kart okuma - hataları daha iyi yönet
+                    try:
+                        uid = reader.read_passive_target(timeout=0.1)
+                        consecutive_errors = 0  # Hatasız okuma, sayacı sıfırla
                     
-                    # Kart tespit edildi ve soğuma süresi geçti mi?
-                    current_time = time.time()
-                    if uid and (current_time - last_scan_time) > SCAN_COOLDOWN_TIME:
-                        uid_hex = uid.hex()
-                        last_scan_time = current_time
-                        
-                        # Kart okuma olayını oluştur
-                        scan_event = CardScanEvent(uid_hex, role, is_inside)
-                        logger.info(f"{role.upper()} - UID: {uid_hex}")
-                        
-                        # API'ya kart bilgisini gönder
-                        try:
-                            status, response = send_card(uid_hex, is_inside)
-                            scan_event.processed = True
-                            opened = False
+                        # Kart tespit edildi ve soğuma süresi geçti mi?
+                        current_time = time.time()
+                        if uid and (current_time - last_scan_time) > SCAN_COOLDOWN_TIME:
+                            uid_hex = uid.hex()
+                            last_scan_time = current_time
                             
-                            if status == 200 and response:
-                                if response.get("openDoor", False):
-                                    trigger_relay()
-                                    show_color(role, (0, 255, 0))  # Yeşil - başarılı
-                                    beep(role, [0.1, 0.1])
-                                    opened = True
-                                    scan_event.success = True
-                                    scan_event.door_opened = True
+                            # Kart okuma olayını oluştur
+                            scan_event = CardScanEvent(uid_hex, role, is_inside)
+                            logger.info(f"{role.upper()} - UID: {uid_hex}")
+                            
+                            # API'ya kart bilgisini gönder
+                            try:
+                                status, response = send_card(uid_hex, is_inside)
+                                scan_event.processed = True
+                                opened = False
+                                
+                                # Başarı durumuna göre renk ve uyarı
+                                if status:
+                                    # API yanıtından kapı durumunu al
+                                    if 'doorOpened' in response and response['doorOpened']:
+                                        opened = True
+                                        scan_event.door_opened = True
+                                        scan_event.success = True
+                                        
+                                        # Yeşil renk göster ve bip sesi çal
+                                        show_color(role, (0, 255, 0))
+                                        beep(role, 0.1, 1)  # Kısa tek bip
+                                        
+                                        # Röleyi tetikle (kapıyı aç)
+                                        try:
+                                            trigger_relay()
+                                            logger.info(f"{role.upper()} - Kapı açıldı")
+                                        except Exception as e:
+                                            logger.error(f"Röle tetikleme hatası: {str(e)}")
+                                    else:
+                                        # Yetkisiz giriş - kırmızı göster ve uzun bip
+                                        scan_event.success = False
+                                        show_color(role, (255, 0, 0))
+                                        beep(role, 0.5, 2)  # Uzun çift bip
+                                        logger.warning(f"{role.upper()} - Yetkisiz kart: {uid_hex}")
                                 else:
-                                    show_color(role, (0, 0, 255))  # Mavi - geçersiz kart
-                                    beep(role, [0.1])
+                                    # API hatası - sarı göster
                                     scan_event.success = False
-                            else:
-                                show_color(role, (255, 0, 0))  # Kırmızı - hata
-                                beep(role, [1.0])
-                                scan_event.success = False
-                            
-                            # LCD ekranında göster
-                            if lcd_enabled:
-                                direction = "Disari ciktiniz" if not is_inside else "Iceri girdiniz"
-                                try:
-                                    stop_idle_screen()
-                                    show_scan_result(direction, opened)
-                                    start_idle_screen()
-                                except Exception as e:
-                                    logger.error(f"LCD gösterimi hatası: {str(e)}")
-                                    
-                            # İşlem bittikten sonra nefes efektini yeniden başlat
-                            time.sleep(2)
-                            start_breathing(role)
-                            
-                        except Exception as e:
-                            logger.error(f"Kart işleme hatası: {str(e)}")
-                            show_color(role, (255, 165, 0))  # Turuncu - işlem hatası
-                            beep(role, [0.2, 0.2, 0.2])
-                            time.sleep(2)
-                            start_breathing(role)
-                
+                                    show_color(role, (255, 255, 0))
+                                    beep(role, 0.2, 3)  # Üç kısa bip
+                                    logger.error(f"{role.upper()} - API hatası: {response}")
+                                
+                                # LCD'de göster
+                                if lcd_enabled:
+                                    try:
+                                        stop_idle_screen()
+                                        direction = "İçeriden Çıkış" if is_inside else "Dışarıdan Giriş"
+                                        show_scan_result(direction, opened)
+                                        start_idle_screen()
+                                    except Exception as lcd_error:
+                                        logger.error(f"LCD gösterme hatası: {str(lcd_error)}")
+                                
+                                # Okuyucuyu bekleme durumuna getir (nefes efekti)
+                                start_breathing(role)
+                                
+                            except Exception as e:
+                                logger.error(f"Kart işleme hatası: {str(e)}")
+                                scan_event.processed = False
+                                
+                                # Hata durumunda sarı göster
+                                show_color(role, (255, 255, 0))
+                                beep(role, 0.1, 3)  # Üç kısa bip
+                    
+                    except Exception as read_error:
+                        consecutive_errors += 1
+                        logger.warning(f"{role} kart okuma hatası: {str(read_error)} ({consecutive_errors} ardışık hata)")
+                        
+                        # Çok fazla ardışık hata varsa okuyucuyu yeniden başlat
+                        if consecutive_errors >= 10:
+                            logger.error(f"{role} okuyucu çok fazla hata verdi, yeniden başlatılıyor")
+                            reader_active = False
+                            show_color(role, (255, 0, 0))  # Kırmızı - hata
+                        
+                        # Her hatadan sonra biraz bekle
+                        time.sleep(1)
+                    
                 except Exception as e:
-                    # Her 10 hata sonrası durum raporu
                     consecutive_errors += 1
-                    if consecutive_errors % 10 == 1:
-                        logger.error(f"{role} okuyucu döngüsünde hata ({consecutive_errors}): {str(e)}")
+                    logger.error(f"{role} döngü hatası: {str(e)} ({consecutive_errors} ardışık hata)")
                     
-                    # Ciddi hata durumunda döngüden çık
-                    if consecutive_errors > 100:
-                        logger.critical(f"{role} okuyucu çok fazla hata üretti, yeniden başlatılıyor")
+                    if consecutive_errors >= 10:
                         reader_active = False
-                        break
+                        show_color(role, (255, 0, 0))  # Kırmızı - hata
                     
-                    # Kısa bekleme
-                    time.sleep(0.5)
-                    
-                    # Döngüye devam et
-                    continue
+                    time.sleep(1)
             
-            # Okuyucu döngüsü sonlandı, yeniden başlatma
+            # Okuyucu döngüsünden çıkıldı, yeniden başlatma
             logger.warning(f"{role} okuyucu döngüsü sonlandı, yeniden başlatılıyor")
-            restart_attempts -= 1
-            time.sleep(HARDWARE_RESET_DELAY)
             
         except Exception as e:
-            logger.critical(f"{role} NFC thread kritik hata: {str(e)}")
-            print(f"[HATA] {role} NFC thread'i başarısız: {str(e)}")
-            restart_attempts -= 1
-            time.sleep(HARDWARE_RESET_DELAY)
+            logger.error(f"{role} ana thread hatası: {str(e)}")
+            
+        # Yeniden başlatma sayacını azalt
+        restart_attempts -= 1
+        
+        # Yeniden başlatma öncesi biraz bekle
+        time.sleep(5)
     
-    # Tüm yeniden başlatma denemeleri başarısız
-    logger.critical(f"{role} NFC okuyucu tüm yeniden başlatma denemeleri başarısız oldu")
-    print(f"[HATA] {role} NFC okuyucu yeniden başlatılamadı, sonlandırılıyor")
-    show_color(role, (255, 0, 0))  # Kırmızı - ölümcül hata
-    return 
+    # Tüm yeniden başlatma denemeleri tükendi
+    logger.critical(f"{role} okuyucu kalıcı olarak devre dışı bırakıldı, çok fazla başarısız deneme")
+    show_color(role, (255, 50, 0))  # Turuncu - kalıcı devre dışı
 
 class NFCReader:
     """

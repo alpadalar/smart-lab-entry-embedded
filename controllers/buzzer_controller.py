@@ -80,18 +80,33 @@ except Exception as e:
         }
         print("[BUZZER] Hata nedeniyle simülasyon moduna geçildi")
 
-def beep(role, pattern):
+def beep(role, duration_or_pattern, repeats=1):
     """
     Buzzer ses çıkarma
-    pattern: bip uzunlukları listesi (örn: [0.1, 0.1] - kısa-kısa bip)
+    
+    Args:
+        role: Hangi buzzer'ın kullanılacağı ("inside" veya "outside")
+        duration_or_pattern: Tek bir bip için süre (saniye) veya bip uzunlukları listesi
+        repeats: Tekrar sayısı (yalnızca duration bir sayı olduğunda kullanılır)
     """
     try:
-        buzzer = buzzers[role]
+        buzzer = buzzers.get(role)
+        if not buzzer:
+            print(f"[BUZZER] {role} için buzzer bulunamadı")
+            return
+        
+        # Pattern bir liste mi yoksa süre mi kontrol et
+        if isinstance(duration_or_pattern, list):
+            # Eski tarz - bip örüntüsü listesi
+            pattern = duration_or_pattern
+        else:
+            # Yeni tarz - süre ve tekrar sayısı
+            pattern = [duration_or_pattern] * repeats
         
         # Buzzer sınıfının beep metodu varsa kullan
         if hasattr(buzzer, 'beep'):
-            # Eğer sadece tek bir bip isteniyorsa GPIOZero'nun beep metodunu kullan
-            if len(pattern) == 1:
+            # Tek bir bip ve tekrar yoksa GPIOZero'nun beep metodunu kullan
+            if len(pattern) == 1 and repeats == 1:
                 buzzer.beep(on_time=pattern[0], off_time=0.1, n=1, background=True)
                 time.sleep(pattern[0] + 0.1)  # Bipin bitmesini bekle
             else:
@@ -109,7 +124,7 @@ def beep(role, pattern):
                 buzzer.off()
                 time.sleep(0.1)
     except Exception as e:
-        print(f"[BUZZER] Bip sesi çıkarma hatası: {e}") 
+        print(f"[BUZZER] Bip sesi çıkarma hatası: {e}")
 
 # Cleanup fonksiyonu - Buzzer'ları sıfırla ve kaynakları serbest bırak
 def cleanup():

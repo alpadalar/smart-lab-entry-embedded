@@ -74,27 +74,45 @@ def select_channel(channel: int):
         
     # I2C bus'a erişim için lock kullan
     with i2c_lock:
-        try:
-            bus = SMBus(1)  # Raspberry Pi'de genellikle bus 1 kullanılır
-            
-            # Belirtilen kanalı seç (1 << channel ile bit maskeleme)
-            bus.write_byte(MUX_ADDRESS, 1 << channel)
-            
-            # Biraz bekle - cihazlar arası iletişim için
-            time.sleep(0.01)
-            
-            # İşlem tamamlandığında bus'ı kapat
-            bus.close()
-            
-            # Güncel kanalı güncelle
-            current_channel = channel
-            
-            logger.debug(f"Multiplexer kanal {channel} başarıyla seçildi")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Multiplexer kanal {channel} seçimi başarısız: {str(e)}")
-            return False
+        # Birkaç kez deneme yap
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                bus = SMBus(1)  # Raspberry Pi'de genellikle bus 1 kullanılır
+                
+                # Önce tüm kanalları kapat
+                bus.write_byte(MUX_ADDRESS, 0)
+                time.sleep(0.02)  # Biraz daha uzun bekle
+                
+                # Belirtilen kanalı seç (1 << channel ile bit maskeleme)
+                bus.write_byte(MUX_ADDRESS, 1 << channel)
+                
+                # Biraz bekle - cihazlar arası iletişim için
+                time.sleep(0.05)  # Daha uzun bekleme süresi
+                
+                # İşlem tamamlandığında bus'ı kapat
+                bus.close()
+                
+                # Güncel kanalı güncelle
+                current_channel = channel
+                
+                logger.debug(f"Multiplexer kanal {channel} başarıyla seçildi")
+                return True
+                
+            except Exception as e:
+                retry_count += 1
+                logger.warning(f"Multiplexer kanal {channel} seçimi denemesi {retry_count}/{max_retries} başarısız: {str(e)}")
+                time.sleep(0.1 * retry_count)  # Her denemede biraz daha uzun bekle
+                
+                try:
+                    bus.close()
+                except:
+                    pass
+        
+        logger.error(f"Multiplexer kanal {channel} seçimi tüm denemelerde başarısız oldu")
+        return False
 
 def reset_multiplexer():
     """
@@ -111,20 +129,33 @@ def reset_multiplexer():
         return True
         
     with i2c_lock:
-        try:
-            bus = SMBus(1)
-            
-            # 0 değeri yazarak tüm kanalları kapat
-            bus.write_byte(MUX_ADDRESS, 0)
-            
-            time.sleep(0.01)
-            bus.close()
-            
-            current_channel = None
-            
-            logger.debug("Multiplexer başarıyla sıfırlandı")
-            return True
-            
-        except Exception as e:
-            logger.error(f"Multiplexer sıfırlama başarısız: {str(e)}")
-            return False 
+        max_retries = 3
+        retry_count = 0
+        
+        while retry_count < max_retries:
+            try:
+                bus = SMBus(1)
+                
+                # 0 değeri yazarak tüm kanalları kapat
+                bus.write_byte(MUX_ADDRESS, 0)
+                
+                time.sleep(0.05)  # Daha uzun bekleme
+                bus.close()
+                
+                current_channel = None
+                
+                logger.debug("Multiplexer başarıyla sıfırlandı")
+                return True
+                
+            except Exception as e:
+                retry_count += 1
+                logger.warning(f"Multiplexer sıfırlama denemesi {retry_count}/{max_retries} başarısız: {str(e)}")
+                time.sleep(0.1 * retry_count)
+                
+                try:
+                    bus.close()
+                except:
+                    pass
+        
+        logger.error("Multiplexer sıfırlama tüm denemelerde başarısız oldu")
+        return False 
