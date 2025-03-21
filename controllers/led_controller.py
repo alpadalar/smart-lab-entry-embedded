@@ -1,55 +1,63 @@
-import board as pi_board
+import RPi.GPIO as GPIO
 import threading
 import time
 import math
 import yaml
-from rpi_ws281x import PixelStrip, Color
 
 with open("config/config.yaml") as f:
     config = yaml.safe_load(f)
 
-# LED strip özelliklerini tanımla
-LED_COUNT = config['led_pixel_count']
-LED_FREQ_HZ = 800000  # LED sinyal frekansı
-LED_DMA = 10          # DMA kanalı
-LED_BRIGHTNESS = 255  # 0-255 arası parlaklık ayarı
-LED_INVERT = False    # Sinyal terslemesi
+# GPIO ayarlarını yap
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
 
-# LED şerit nesnelerini oluştur
-pixels = {
-    "inside": PixelStrip(LED_COUNT, config['led_pins']['inside'], LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS),
-    "outside": PixelStrip(LED_COUNT, config['led_pins']['outside'], LED_FREQ_HZ, LED_DMA, LED_INVERT, LED_BRIGHTNESS)
+# LED pinlerini ayarla
+GPIO.setup(config['led_pins']['inside'], GPIO.OUT)
+GPIO.setup(config['led_pins']['outside'], GPIO.OUT)
+
+# PWM nesnelerini oluştur
+pwm_leds = {
+    "inside": GPIO.PWM(config['led_pins']['inside'], 100),  # 100 Hz
+    "outside": GPIO.PWM(config['led_pins']['outside'], 100)  # 100 Hz
 }
 
-# LED şeritlerini başlat
-for p in pixels.values():
-    p.begin()
+# PWM başlat
+for led in pwm_leds.values():
+    led.start(0)  # %0 duty cycle (kapalı)
 
-def color_wipe(strip, color):
-    """Şeritteki tüm pikselleri aynı renge boyar."""
-    for i in range(strip.numPixels()):
-        strip.setPixelColor(i, color)
-    strip.show()
-
-def rgb_to_color(rgb_tuple):
-    """RGB tuple'dan rpi_ws281x Color nesnesine dönüştürür."""
-    r, g, b = rgb_tuple
-    return Color(r, g, b)
-
-def breathing_effect(pixels_obj):
+def breathing_effect(led_pwm):
+    """Nefes alıp veren LED efekti"""
     while True:
-        for i in range(0, 360, 5):
-            brightness = (math.exp(math.sin(math.radians(i))) - 0.3679) / (math.e - 0.3679)
-            r, g, b = [int(255 * brightness)] * 3
-            color_wipe(pixels_obj, Color(r, g, b))
+        for i in range(0, 101, 5):  # 0'dan 100'e
+            led_pwm.ChangeDutyCycle(i)
+            time.sleep(0.05)
+        for i in range(100, -1, -5):  # 100'den 0'a
+            led_pwm.ChangeDutyCycle(i)
             time.sleep(0.05)
 
-def show_color(role, rgb_color, duration=2):
-    p = pixels[role]
-    color = rgb_to_color(rgb_color)
-    color_wipe(p, color)
+def show_pattern(role, pattern, duration=2):
+    """LED yanıp sönme desenini göster
+    pattern: açık/kapalı durumlar listesi (Ör: [1, 0, 1, 0] - açık, kapalı, açık, kapalı)
+    """
+    led_pin = config['led_pins'][role]
+    for state in pattern:
+        GPIO.output(led_pin, state)
+        time.sleep(0.2)
     time.sleep(duration)
-    color_wipe(p, Color(0, 0, 0))
+    GPIO.output(led_pin, 0)  # Kapat
+
+def show_color(role, color, duration=2):
+    """
+    color: (r, g, b) - Bu basit implementasyonda sadece parlaklık kullanılır
+    """
+    # RGB'den parlaklık hesapla (ortalama değer)
+    brightness = sum(color) / (3 * 255) * 100
+    
+    pwm_led = pwm_leds[role]
+    pwm_led.ChangeDutyCycle(brightness)
+    time.sleep(duration)
+    pwm_led.ChangeDutyCycle(0)  # Kapat
 
 def start_breathing(role):
-    threading.Thread(target=breathing_effect, args=(pixels[role],), daemon=True).start() 
+    """Nefes alıp veren LED efektini başlat"""
+    threading.Thread(target=breathing_effect, args=(pwm_leds[role],), daemon=True).start() 
