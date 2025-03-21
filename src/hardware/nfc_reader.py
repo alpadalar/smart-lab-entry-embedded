@@ -1,6 +1,7 @@
 import board
 import busio
 import time
+import smbus
 from adafruit_pn532.i2c import PN532_I2C
 from src.config import INSIDE_NFC_CHANNEL, OUTSIDE_NFC_CHANNEL, NFC_ADDR
 
@@ -17,6 +18,7 @@ class NFCReader:
         # I2C bağlantısı
         try:
             self.i2c = busio.I2C(board.SCL, board.SDA)
+            self.smbus = smbus.SMBus(1)
             print("I2C bağlantısı başarılı.")
         except Exception as e:
             print(f"I2C bağlantı hatası: {str(e)}")
@@ -31,7 +33,7 @@ class NFCReader:
             time.sleep(0.01)  # Kanal değişikliği için kısa bekleme
             
             # PN532'yi başlat
-            self.pn532 = PN532_I2C(self.i2c)
+            self.pn532 = PN532_I2C(self.i2c, debug=True)
             
             # PN532'yi yapılandır
             print("PN532 yapılandırılıyor...")
@@ -73,9 +75,11 @@ class NFCReader:
             if hasattr(self, 'pn532'):
                 self.pn532.deinit()
             
-            # I2C bağlantısını temizle
+            # I2C bağlantılarını temizle
             if hasattr(self, 'i2c'):
                 self.i2c.deinit()
+            if hasattr(self, 'smbus'):
+                self.smbus.close()
                 
         except Exception as e:
             print(f"NFC okuyucu temizleme hatası: {str(e)}")
